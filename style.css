@@ -63,7 +63,7 @@ body {
     vertical-align: middle;
 }
 
-/* สไตล์พื้นหลังโมดอลป๊อปอัพเด้ง */
+/* 🟢 สไตล์พื้นหลังโมดอลป๊อปอัพเด้ง - ปรับปรุงให้ซ่อน (display: none) เป็นค่าเริ่มต้นเพื่อแก้ปัญหากล่องเด้งเอง */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -72,10 +72,15 @@ body {
     bottom: 0;
     background-color: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(5px);
-    display: flex;
+    display: none; /* ซ่อนโมดอลไว้ตั้งแต่เริ่มต้นโหลดหน้าเว็บ */
     align-items: center;
     justify-content: center;
     z-index: 100;
+}
+
+/* 🟢 แสดงโมดอลเป็น flex เมื่อระบุคลาส active เท่านั้น */
+.modal-backdrop.active {
+    display: flex !important;
 }
 
 .animate-scale {
