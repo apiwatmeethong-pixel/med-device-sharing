@@ -171,6 +171,7 @@ function renderEquipmentTypeGrid() {
     if (!grid) return;
     grid.innerHTML = '';
     
+    // จัดกลุ่มประมวลผลประเภทอุปกรณ์พัสดุเพื่อนับจำนวนรวม ยืม คืน
     const groups = {};
     state.equipments.forEach(eq => {
         const name = eq.EquipmentName ? eq.EquipmentName.trim() : 'อุปกรณ์ทั่วไป';
@@ -190,6 +191,7 @@ function renderEquipmentTypeGrid() {
         return;
     }
     
+    // ลูปสร้างหน้าการ์ดแสดงยอดแบบสีแยกตามกลุ่มคำหลักพร้อมไอคอน FontAwesome
     for (let name in groups) {
         let icon = 'fa-kit-medical';
         let colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700';
@@ -288,7 +290,7 @@ function renderBorrowTable() {
     }
 }
 
-// แสดงรายการฐานข้อมูลคลังกายอุปกรณ์อย่างสมบูรณ์
+// 🟢 แก้ไขจุดบกพร่อง: เขียนเชื่อมต่อฟังก์ชันแสดงรายการฐานข้อมูลคลังกายอุปกรณ์อย่างสมบูรณ์
 function renderEquipmentTable() {
     const tbody = document.getElementById('equipment-rows');
     if (!tbody) return;
