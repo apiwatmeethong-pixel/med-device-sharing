@@ -93,7 +93,11 @@ body {
     to { transform: scale(1); opacity: 1; }
 }
 
+/* ==========================================================================
+   ⚙️ ตรรกะคุมเลย์เอาต์ระบบเครื่องพิมพ์พิมพ์เอกสารสัญญา (Official Print CSS Locks)
+   ========================================================================== */
 @media print {
+    /* ซ่อนแถบเครื่องมือและหน้าต่างแอปพลิเคชันหลักออกไปทั้งหมดตามปกติทิ้งไว้ก่อน */
     #sidebar, header, .print\:hidden, button, input, select, textarea, #public-pdpa-banner, .leaflet-control-container, .modal-backdrop {
         display: none !important;
     }
@@ -101,19 +105,36 @@ body {
         padding-left: 0 !important;
         margin: 0 !important;
     }
-    .app-view, .bg-white {
-        display: block !important;
-        border: none !important;
-        box-shadow: none !important;
-        background: transparent !important;
-        padding: 0 !important;
+
+    /* 🔒 ล็อกเด็ดขาด: หากอยู่ในโหมดพิมพ์สัญญา ให้ซ่อนเลย์เอาต์หน้าหลักทั้งหมด แล้วแสดงเฉพาะใบยืมสัญญาตัวจริง */
+    body.print-mode-receipt #main-wrapper {
+        display: none !important;
     }
+    body.print-mode-receipt #print-section {
+        display: block !important;
+    }
+    body.print-mode-receipt #print-tracking-section {
+        display: none !important;
+    }
+
+    /* 🔒 ล็อกเด็ดขาด: หากอยู่ในโหมดพิมพ์รายงานตารางสรุปค้างส่งคืน ให้แสดงเฉพาะตัวตารางแนวนอน */
+    body.print-mode-tracking #main-wrapper {
+        display: none !important;
+    }
+    body.print-mode-tracking #print-section {
+        display: none !important;
+    }
+    body.print-mode-tracking #print-tracking-section {
+        display: block !important;
+    }
+
+    /* การตั้งค่าหน้ากระดาษเบื้องต้นสำหรับรายงาน */
     table {
         width: 100% !important;
         border-collapse: collapse !important;
     }
     table th, table td {
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #000000 !important;
         color: #000000 !important;
         padding: 5px 6px !important;
     }
