@@ -1,94 +1,98 @@
 /**
- * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Frontend Controller API
+ * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Frontend Controller API (v2.1)
  * พัฒนาโดย: ศบส.บ้านโทกหัวช้าง (James)
  */
 
-// ⚠️ สำคัญมาก: กรุณานำ URL เว็บแอปที่ได้จากการ Deploy ใน Google Apps Script มาวางแทนที่ข้อความด้านล่างนี้
+// ⚠️ โปรดนำ URL เว็บแอปพลิเคชันที่ได้จากคำสั่ง Deploy บน Google Apps Script มาแทนที่ค่าว่างนี้
 const API_URL = "https://script.google.com/macros/s/AKfycbxv5VBkdeJKDdxB77ca_IJROa1YEqVlXmeYZQPs8_u3Upfdy-RQY4jZkrjL2fUjLYFJzQ/exec"; 
+
+// ภาพโครงสร้าง Vector SVG สำหรับใช้งานทดแทน Logo เริ่มต้น เพื่อแก้ปัญหาเครือข่ายโหลดล้มเหลว
+const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
 
 let state = {
     isAdmin: false,
     adminId: '',
     adminName: '',
-    data: [],       // ข้อมูลตาราง BorrowLog
-    publics: [],    // ข้อมูลตาราง Publics (รูปโลโก้, องค์กร, ชุมชน)
-    equipments: [], // ข้อมูลตาราง Equipments
+    data: [],       
+    publics: [],    
+    equipments: [], 
     currentTab: 'dashboard'
 };
 
-// ตัวแปรควบคุมระบบแผนที่ Leaflet
 let mapInstance = null;
 let communityLayers = {};
 let mapLayerControl = null;
 
-// ฟังก์ชันแกนหลักในการทำ HTTP Fetch ติดต่อสื่อสารข้อมูลกับ GAS API
+// ฟังก์ชันแกนหลักสำหรับเชื่อมต่อเรียกรับข้อมูลกับฝั่ง GAS Web App API
 async function run(action, payload = {}) {
     if (localStorage.getItem('adminToken')) {
         payload.token = localStorage.getItem('adminToken');
     }
 
-    if (API_URL === "YOUR_GAS_WEB_APP_URL") {
-        console.error("กรุณาระบุ URL ของระบบ GAS Web App ในไฟล์ script.js");
-        return { success: false, error: 'ยังไม่ได้ตั้งค่า API_URL ของระบบตัวแปรฐาน' };
+    if (!API_URL || API_URL === "YOUR_GAS_WEB_APP_URL") {
+        console.error("ยังไม่ได้ระบุที่อยู่เว็บบริการ API_URL ของระบบตัวแปรฐาน");
+        return { success: false, error: 'ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์เชื่อมต่อ' };
     }
 
     try {
-        // ใช้โหมด 'text/plain;charset=utf-8' เพื่อหลีกเลี่ยงข้อจำกัดการ Preflight CORS ของเบราว์เซอร์กับ GAS
         const response = await fetch(API_URL, {
             method: 'POST',
             mode: 'cors',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8'
-            },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
         const result = await response.json();
         
         if (result.needLogin) {
             logout();
-            Swal.fire('หมดสิทธิ์การใช้งาน', 'เซสชั่นเข้าสู่ระบบหมดอายุ กรุณาเข้าใช้งานใหม่อีกครั้ง', 'warning');
-            throw new Error('Require Login Session');
+            Swal.fire('หมดเซสชั่น', 'สิทธิ์ล็อกอินหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง', 'warning');
+            throw new Error('Session Expired');
         }
         return result;
     } catch (error) {
-        console.error("การเชื่อมต่อ API ผิดพลาด:", error);
+        console.error("การเชื่อมต่อระบบเซิร์ฟเวอร์ API ล้มเหลว:", error);
         throw error;
     }
 }
 
-// เริ่มต้นโหลดระบบเมื่อเอกสาร DOM โหลดเรียบร้อยแล้ว
+// จุดเริ่มต้นรันระบบงานหลักเมื่อโครงสร้างหน้าเพจดาวน์โหลดเสร็จสิ้น
 document.addEventListener('DOMContentLoaded', async () => {
     checkAuthSession();
     await loadSystemData();
     document.getElementById('borrow-date').valueAsDate = new Date();
 });
 
-// ตรวจสอบข้อมูลเซสชั่นสิทธิ์ของเจ้าหน้าที่ในระบบ Local Storage
+// ตรวจสอบเช็คสิทธิ์ล็อกอินค้างจากบันทึกเดิมของเว็บเบราว์เซอร์ Local Storage
 function checkAuthSession() {
     if (localStorage.getItem('adminToken')) {
         state.isAdmin = true;
         state.adminId = localStorage.getItem('adminId');
         state.adminName = localStorage.getItem('adminName');
         
-        // ปรับแต่งหน้า Layout ย้ายหน้าตาเข้าโหมดระบบ Sidebar แอดมิน
-        document.getElementById('sidebar').classList.remove('hidden-important');
-        document.getElementById('main-wrapper').classList.add('md:pl-64');
+        // ปรับแต่งจัดเลย์เอาต์ย้ายหน้าจอเข้าสู้โหมดบริหารแอดมินแถบข้างซ้าย
+        const sidebar = document.getElementById('sidebar');
+        const wrapper = document.getElementById('main-wrapper');
+        
+        sidebar.classList.remove('hidden');
+        wrapper.classList.add('md:pl-64');
+        
         document.getElementById('public-header-brand').classList.add('md:hidden');
         document.getElementById('btn-login-trigger').classList.add('hidden');
         document.getElementById('logged-admin-info').classList.remove('hidden');
-        document.getElementById('display-admin-name').innerText = "ผู้ใช้งาน: " + state.adminName;
+        document.getElementById('display-admin-name').innerText = "เจ้าหน้าที่: " + state.adminName;
         document.getElementById('pdpa-badge').classList.remove('hidden');
         
-        // แสดงเมนูเครื่องมือลับการจัดการทั้งหมดของแอดมินตามชั้นสิทธิ์
+        // ยอมให้สิทธิ์แสดงบล็อกตารางข้อมูลผู้รับบริการฉบับเต็มตามข้อกำหนดและมาตรฐานความปลอดภัย
+        document.getElementById('borrow-log-section').classList.remove('hidden');
+
         const adminElements = document.querySelectorAll('.admin-only');
         adminElements.forEach(el => el.classList.remove('hidden'));
     }
 }
 
-// ฟังก์ชันโหลดฐานข้อมูลหลักทุกส่วนเข้าสู่สเตทแอปพลิเคชัน
+// ยิงเรียกข้อมูลจากตารางหลักทั้งหมดมาจัดเก็บเข้าสู่แอปพลิเคชันสเตท
 async function loadSystemData() {
     try {
-        // ดึงค่าข้อมูลจากทั้ง 3 ตารางหลักพร้อมกันผ่านตัวยิง API
         const [resLog, resPub, resEq] = await Promise.all([
             run('getData', { sheetName: 'BorrowLog' }),
             run('getData', { sheetName: 'Publics' }),
@@ -101,22 +105,24 @@ async function loadSystemData() {
 
         applySystemConfiguration();
         renderDashboardStats();
-        renderBorrowTable();
-        populateFormSelectors();
+        renderEquipmentTypeGrid();
         
-        if (state.currentTab === 'map') {
-            initLeafletGISMap();
+        if (state.isAdmin) {
+            renderBorrowTable();
+            renderEquipmentTable();
+            populateFormSelectors();
+            if (state.currentTab === 'map') initLeafletGISMap();
         }
     } catch (e) {
-        console.error("การดาวน์โหลดโครงสร้างข้อมูลขัดข้อง", e);
+        console.error("ข้อผิดพลาดในการดึงค่าชุดข้อมูลสรุปโครงสร้าง:", e);
     }
 }
 
-// อัปเดตข้อมูลองค์กร โลโก้ บนหน้าหน้าจอตามฐานข้อมูล Publics จากสเปรดชีต
+// อัปเดตผูกค่าตัวแปรหัวข้อ โลโก้ และข้อความประชาสัมพันธ์ส่วนต่าง ๆ หน้าเว็บ
 function applySystemConfiguration() {
-    let logoUrl = "https://via.placeholder.com/150";
+    let logoUrl = DEFAULT_LOGO;
     let title1 = "ระบบบริหารจัดการ ยืมคืนอุปกรณ์การแพทย์";
-    let title2 = "งานศูนย์บริการกายอุปกรณ์";
+    let title2 = "งานบริการศูนย์กายอุปกรณ์ทางการแพทย์สาธารณสุข";
 
     const logoItem = state.publics.find(item => item['ประเภท'] === 'Logo');
     const agencyItem = state.publics.find(item => item['ประเภท'] === 'Agency');
@@ -133,8 +139,9 @@ function applySystemConfiguration() {
     document.getElementById('nav-subtitle').innerText = title2;
     document.getElementById('side-agency-title').innerText = title1;
 
-    // เติมพารามิเตอร์ช่อง Inputs ในหน้าฟอร์มตั้งค่ารอไว้
-    if (document.getElementById('sec-settings').classList.contains('hidden') === false || true) {
+    // เติมพารามิเตอร์ช่อง Inputs ในหน้าตั้งค่าระบบทิ้งไว้ล่วงหน้า
+    const setAgency1 = document.getElementById('set-agency1');
+    if (setAgency1) {
         document.getElementById('set-logo-old').value = logoUrl;
         document.getElementById('set-agency1').value = title1;
         document.getElementById('set-agency2').value = title2;
@@ -145,7 +152,7 @@ function applySystemConfiguration() {
     }
 }
 
-// คำนวณค่าทางสถิตินำมาเรนเดอร์ลงในกล่องพาสเทลบนหน้าแดชบอร์ด
+// เรนเดอร์ตัวชี้วัด KPI สรุปรวมภาพกว้างด้านบน
 function renderDashboardStats() {
     document.getElementById('stat-total-eq').innerText = state.equipments.length;
     
@@ -158,71 +165,169 @@ function renderDashboardStats() {
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
 
-// แสดงตารางบันทึกรายงานข้อมูลการยืมอุปกรณ์การแพทย์
+// ฟังก์ชันสรุปสถานะแยกประเภทครุภัณฑ์อุปกรณ์ทางการแพทย์ พร้อมติดตั้งรูปไอคอนพาสเทลสวยงามเด่นชัด
+function renderEquipmentTypeGrid() {
+    const grid = document.getElementById('equipment-type-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    // จัดกลุ่มประมวลผลประเภทอุปกรณ์พัสดุเพื่อนับจำนวนรวม ยืม คืน
+    const groups = {};
+    state.equipments.forEach(eq => {
+        const name = eq.EquipmentName ? eq.EquipmentName.trim() : 'อุปกรณ์ทั่วไป';
+        if (!groups[name]) {
+            groups[name] = { total: 0, available: 0, borrowed: 0 };
+        }
+        groups[name].total++;
+        if (eq.Status === 'Available' || eq.Status === 'ว่าง') {
+            groups[name].available++;
+        } else {
+            groups[name].borrowed++;
+        }
+    });
+    
+    if (Object.keys(groups).length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">ไม่พบข้อมูลกลุ่มหมวดหมู่พัสดุในระบบคลังคัมภีร์</div>';
+        return;
+    }
+    
+    // ลูปสร้างหน้าการ์ดแสดงยอดแบบสีแยกตามกลุ่มคำหลักพร้อมไอคอน FontAwesome
+    for (let name in groups) {
+        let icon = 'fa-kit-medical';
+        let colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700';
+        let iconBg = 'text-blue-500';
+        
+        if (name.includes('เตียง')) {
+            icon = 'fa-bed';
+            colorTheme = 'bg-indigo-50/70 border-indigo-100/60 text-indigo-700';
+            iconBg = 'text-indigo-500';
+        } else if (name.includes('ที่นอน')) {
+            icon = 'fa-wind';
+            colorTheme = 'bg-teal-50/70 border-teal-100/60 text-teal-700';
+            iconBg = 'text-teal-500';
+        } else if (name.includes('รถเข็น') || name.includes('รถนอน') || name.includes('เปล')) {
+            icon = 'fa-wheelchair';
+            colorTheme = 'bg-amber-50/70 border-amber-100/60 text-amber-700';
+            iconBg = 'text-amber-500';
+        } else if (name.includes('ออกซิเจน')) {
+            icon = 'fa-lungs';
+            colorTheme = 'bg-sky-50/70 border-sky-100/60 text-sky-700';
+            iconBg = 'text-sky-500';
+        } else if (name.includes('วอคเกอร์') || name.includes('ไม้ค้ำ')) {
+            icon = 'fa-crutches';
+            colorTheme = 'bg-purple-50/70 border-purple-100/60 text-purple-700';
+            iconBg = 'text-purple-500';
+        }
+        
+        const g = groups[name];
+        const card = document.createElement('div');
+        card.className = `${colorTheme} border p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all hover:scale-[1.01]`;
+        card.innerHTML = `
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="p-2.5 rounded-xl bg-white shadow-sm flex-shrink-0 ${iconBg}">
+                    <i class="fa-solid ${icon} text-lg"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <h5 class="font-bold text-xs text-gray-700 truncate">${name}</h5>
+                    <p class="text-[11px] text-gray-500 mt-0.5">ในคลัง: ${g.total} | ว่าง: <span class="text-emerald-600 font-bold">${g.available}</span></p>
+                </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100/80 text-rose-700">ถูกยืม: ${g.borrowed}</span>
+            </div>
+        `;
+        grid.appendChild(card);
+    }
+}
+
+// เรนเดอร์ผูกรายการตารางบันทึกการยืมคืนในหน้าระบบแอดมินหลังได้รับอนุญาตสิทธิ์ล็อกอิน
 function renderBorrowTable() {
     const tbody = document.getElementById('borrow-rows');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     if (state.data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-6 text-slate-400">❌ ไม่มีรายการข้อมูลประวัติการทำรายการในฐานระบบ</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-6 text-gray-400">❌ ไม่พบประวัติการทำรายการขอยืมครุภัณฑ์ทางการแพทย์</td></tr>`;
         return;
     }
 
     state.data.forEach(item => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50/80 transition-all duration-150";
+        tr.className = "hover:bg-gray-50/70 transition-all duration-100";
         
-        // รูปแบบสีสถานะพาสเทลสดใสเด่นชัด
-        let statusBadge = '';
-        if (item.Status === 'Borrowed' || item.Status === 'ยืม') {
-            statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100/50"><i class="fa-solid fa-clock mr-1"></i>กำลังยืม</span>`;
-        } else {
-            statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100/50"><i class="fa-solid fa-circle-check mr-1"></i>คืนแล้ว</span>`;
-        }
+        let statusBadge = (item.Status === 'Borrowed' || item.Status === 'ยืม') ?
+            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100"><i class="fa-solid fa-clock mr-1"></i>กำลังยืม</span>` :
+            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><i class="fa-solid fa-circle-check mr-1"></i>คืนคลังแล้ว</span>`;
 
         const borrowDateFormatted = item.BorrowDate ? new Date(item.BorrowDate).toLocaleDateString('th-TH') : '-';
-        
-        let actionButtons = '';
-        if (state.isAdmin) {
-            actionButtons = `
-                <div class="flex items-center gap-1.5">
-                    ${(item.Status === 'Borrowed' || item.Status === 'ยืม') ? 
-                        `<button onclick="processReturnItem('${item.EntryID}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs px-2.5 py-1.5 rounded-lg transition"><i class="fa-solid fa-rotate-left mr-1"></i>รับคืน</button>` : ''
-                    }
-                    <button onclick="deleteBorrowRecord('${item.EntryID}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition" title="ลบข้อมูลรายการ"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-            `;
-        }
+        const actionButtons = `
+            <div class="flex items-center gap-1">
+                ${(item.Status === 'Borrowed' || item.Status === 'ยืม') ? 
+                    `<button onclick="processReturnItem('${item.EntryID}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[11px] px-2 py-1 rounded-lg transition"><i class="fa-solid fa-rotate-left mr-1"></i>คืน</button>` : ''
+                }
+                <button onclick="deleteBorrowRecord('${item.EntryID}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        `;
 
         tr.innerHTML = `
-            <td class="p-4 font-semibold text-slate-700">${item.EquipmentID || '-'}</td>
-            <td class="p-4">${item.PatientName || item.BorrowerName || '-'}</td>
-            <td class="p-4 font-mono text-xs text-slate-500">${item.CitizenID || '-'}</td>
-            <td class="p-4">${item.Community || '-'}</td>
-            <td class="p-4">${borrowDateFormatted}</td>
-            <td class="p-4 font-mono text-xs">${item.Phone || '-'}</td>
-            <td class="p-4">${statusBadge}</td>
-            <td class="p-4 admin-only ${state.isAdmin ? '' : 'hidden'} print:hidden">${actionButtons}</td>
+            <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || '-'}</td>
+            <td class="p-3 font-medium">${item.PatientName || item.BorrowerName || '-'}</td>
+            <td class="p-3 font-mono text-gray-400">${item.CitizenID || '-'}</td>
+            <td class="p-3">${item.Community || '-'}</td>
+            <td class="p-3">${borrowDateFormatted}</td>
+            <td class="p-3 font-mono">${item.Phone || '-'}</td>
+            <td class="p-3">${statusBadge}</td>
+            <td class="p-3 print:hidden">${actionButtons}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    // คัดลอกสร้างตารางย้ายไปหน้าเมนูผู้ดูแลหากเปิดโหมดแอดมินอยู่
     const adminContainer = document.getElementById('borrow-admin-container');
-    if (state.isAdmin && adminContainer) {
+    if (adminContainer && document.getElementById('tbl-borrow-log')) {
         adminContainer.innerHTML = document.getElementById('tbl-borrow-log').outerHTML;
-        // ทำความสะอาดรูปลักษณ์ ID ให้ไม่ชนกัน
-        adminContainer.querySelector('table').id = "tbl-borrow-admin-root";
-        adminContainer.querySelector('input') ? adminContainer.querySelector('input').id = "search-admin-borrow" : null;
+        const subTable = adminContainer.querySelector('table');
+        if (subTable) subTable.id = "tbl-borrow-admin-root";
     }
 }
 
-// โหลดข้อมูลคอมโบ้บ็อกซ์รายการเลือกพัสดุและรายชื่อหมู่บ้านชุมชนในฟอร์ม
+// 🟢 แก้ไขจุดบกพร่อง: เขียนเชื่อมต่อฟังก์ชันแสดงรายการฐานข้อมูลคลังกายอุปกรณ์อย่างสมบูรณ์
+function renderEquipmentTable() {
+    const tbody = document.getElementById('equipment-rows');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (state.equipments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">❌ ไม่พบชุดข้อมูลพัสดุอุปกรณ์ที่ลงทะเบียนในคลัง</td></tr>`;
+        return;
+    }
+
+    state.equipments.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50/70 transition-all duration-100";
+        
+        let statusBadge = (item.Status === 'Available' || item.Status === 'ว่าง') ?
+            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><i class="fa-solid fa-check-circle mr-1"></i>ว่างพร้อมใช้</span>` :
+            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100"><i class="fa-solid fa-handshake mr-1"></i>ถูกยืมไปคลัง</span>`;
+
+        tr.innerHTML = `
+            <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || '-'}</td>
+            <td class="p-3 font-medium text-gray-800">${item.EquipmentName || '-'}</td>
+            <td class="p-3 font-mono text-gray-400">${item.SerialNumber || '-'}</td>
+            <td class="p-3">${statusBadge}</td>
+            <td class="p-3 print:hidden">
+                <button onclick="deleteEquipmentRecord('${item.EquipmentID}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition" title="ลบออกจากสารบบคลัง"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// นำรายชื่อเขตคอมมูนิตี้และเครื่องมือแพทย์ที่ว่างมาบรรจุใส่ช่องคอมโบ้บ็อกซ์ฟอร์มยืม
 function populateFormSelectors() {
     const selectEq = document.getElementById('borrow-eq-id');
-    selectEq.innerHTML = '<option value="">-- กรุณาเลือกอุปกรณ์พัสดุ --</option>';
+    if (!selectEq) return;
+    selectEq.innerHTML = '<option value="">-- กรุณาเลือกรายการอุปกรณ์พัสดุ --</option>';
     
-    // เลือกเฉพาะเครื่องมือพัสดุที่มีสถานะ 'Available' เท่านั้นนำขึ้นมาเปิดให้ยืมคลัง
     const availableEqs = state.equipments.filter(e => e.Status === 'Available' || e.Status === 'ว่าง');
     availableEqs.forEach(e => {
         const opt = document.createElement('option');
@@ -232,7 +337,7 @@ function populateFormSelectors() {
     });
 
     const selectComm = document.getElementById('borrow-community');
-    selectComm.innerHTML = '<option value="">-- เลือกเขตชุมชนหมู่บ้าน --</option>';
+    selectComm.innerHTML = '<option value="">-- เลือกเขตชุมชนหมู่บ้านผู้รับบริการ --</option>';
     const commItems = state.publics.filter(item => item['ประเภท'] === 'Community');
     commItems.forEach(c => {
         const opt = document.createElement('option');
@@ -248,8 +353,12 @@ function syncSerialNumber() {
     document.getElementById('borrow-serial').value = match ? match.SerialNumber : '';
 }
 
-// ฟังก์ชันเปิด-ปิดสลับแท็บเมนูการทำงานหลักด้านซ้ายมือ
+// สลับจัดการเปลี่ยนหน้าแท็บการทำงานหลักของระบบแอดมิน
 function switchTab(tabId) {
+    if (!state.isAdmin && tabId !== 'dashboard') {
+        Swal.fire('สิทธิ์ไม่เพียงพอ', 'กรุณาเข้าสู่ระบบด้วยบัญชีแอดมินเจ้าหน้าที่ก่อน', 'warning');
+        return;
+    }
     state.currentTab = tabId;
     const views = document.querySelectorAll('.app-view');
     views.forEach(v => v.classList.add('hidden'));
@@ -262,21 +371,43 @@ function switchTab(tabId) {
     const targetMenu = document.getElementById(`btn-menu-${tabId}`);
     if (targetMenu) targetMenu.classList.add('active');
 
-    // เรียกโหลดแผนที่เมื่อคลิกสลับเข้ามาที่หน้า GIS แผนที่พิกัด
     if (tabId === 'map') {
-        setTimeout(() => {
-            initLeafletGISMap();
-        }, 150);
-    }
-    
-    // ปิดเมนูเวอร์ชันมือถือกรณีเปิดใช้งานอยู่
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar.classList.contains('-translate-x-full')) {
-        sidebar.classList.add('-translate-x-full');
+        setTimeout(() => { initLeafletGISMap(); }, 200);
     }
 }
 
-// หน้าแผนที่พิกัดระบบสารสนเทศภูมิศาสตร์จำแนกเลเยอร์หมู่บ้านของผู้ขอยืมอุปกรณ์
+// 📐 ระบบหด/ซ่อนเมนูข้างซ้าย (Desktop Minimize Sidebar) เพื่อแก้ปัญหาพื้นที่และอักษรทับซ้อน
+function toggleSidebarMinimize() {
+    const sidebar = document.getElementById('sidebar');
+    const wrapper = document.getElementById('main-wrapper');
+    const icon = document.getElementById('minimize-icon');
+    
+    sidebar.classList.toggle('collapsed');
+    wrapper.classList.toggle('sidebar-collapsed');
+    
+    if (sidebar.classList.contains('collapsed')) {
+        icon.className = "fa-solid fa-chevron-right";
+    } else {
+        icon.className = "fa-solid fa-chevron-left";
+    }
+    
+    if (state.currentTab === 'map' && mapInstance) {
+        setTimeout(() => { mapInstance.invalidateSize(); }, 300);
+    }
+}
+
+// ปุ่มเปิด-ปิดสไลด์เมนูมือถือทางหน้าจอสัมผัส
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (!state.isAdmin) {
+        Swal.fire('ระงับการทำงาน', 'แถบข้างซ้ายถูกล็อกไว้เฉพาะเจ้าหน้าที่ที่ผ่านการล็อกอินเข้าสู่ระบบเรียบร้อยแล้วเท่านั้น', 'info');
+        return;
+    }
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('-translate-x-full');
+}
+
+// รันระบุตำแหน่งพิกัดแผนที่ภูมิศาสตร์ปักหมุดจำแนกรายเลเยอร์หมู่บ้าน
 function initLeafletGISMap() {
     const mapDiv = document.getElementById('map-canvas');
     if (!mapDiv) return;
@@ -286,28 +417,22 @@ function initLeafletGISMap() {
         mapInstance = null;
     }
 
-    // กำหนดจุดพิกัดเริ่มต้นแผนที่ (จุดศูนย์กลางอำเภอเกาะคา จังหวัดลำปาง)
-    mapInstance = L.map('map-canvas').setView([18.2045, 99.4124], 12);
+    mapInstance = L.map('map-canvas').setView([18.2743, 99.4124], 12);
 
-    // เลเยอร์พื้นฐานแบบแผนที่ถนนลายเส้นสากล
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(mapInstance);
 
-    // เลเยอร์พื้นฐานแบบภาพถ่ายดาวเทียมมองเห็นตัวบ้านหลังคาจริง
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri & DigitalGlobe'
+        attribution: 'Tiles © Esri'
     });
 
     const baseMaps = {
-        "แผนที่เส้นทาง (OpenStreetMap)": osmLayer,
-        "ภาพถ่ายดาวเทียม (Satellite)": satelliteLayer
+        "แผนที่ลายเส้นถนนทั่วไป": osmLayer,
+        "ภาพถ่ายดาวเทียมทางอากาศ": satelliteLayer
     };
 
-    // ล้างและสร้างระบบเลเยอร์จำแนกตามรายชื่อกลุ่มชุมชน (Layer Groups)
     communityLayers = {};
-    
-    // กรองดึงเฉพาะเคสผู้ขอยืมที่ยังคงสถานะกำลังยืมอุปกรณ์แพทย์อยู่ และมีการบันทึกพิกัด GPS ไว้เท่านั้น
     const activeBorrows = state.data.filter(item => (item.Status === 'Borrowed' || item.Status === 'ยืม') && item.GPS);
 
     activeBorrows.forEach(item => {
@@ -317,122 +442,92 @@ function initLeafletGISMap() {
             const lng = parseFloat(coords[1].trim());
             
             if (!isNaN(lat) && !isNaN(lng)) {
-                const commName = item.Community || "ทั่วไป/นอกเขต";
+                const commName = item.Community || "ทั่วไปนอกเขต";
                 
                 if (!communityLayers[commName]) {
                     communityLayers[commName] = L.layerGroup();
                 }
 
                 const popupContent = `
-                    <div style="font-family: 'Sarabun', sans-serif; font-size:13px; line-height:1.4;">
-                        <strong style="color: #4f46e5; font-size:14px;">📦 รายการ: ${item.EquipmentID}</strong><br>
-                        <b>ผู้ป่วย:</b> ${item.PatientName || item.BorrowerName}<br>
-                        <b>ชุมชน:</b> เขต ${commName}<br>
-                        <b>เบอร์ติดต่อ:</b> ${item.Phone || '-'}<br>
-                        <b>วันที่ทำเรื่องยืม:</b> ${item.BorrowDate ? new Date(item.BorrowDate).toLocaleDateString('th-TH') : '-'}<br>
-                        ${item.Note ? `<b>หมายเหตุ:</b> <span style="color:#d97706">${item.Note}</span>` : ''}
+                    <div style="font-family:'Sarabun',sans-serif; font-size:12px;">
+                        <strong style="color:#4f46e5;font-size:13px;">📌 รหัสพัสดุ: ${item.EquipmentID}</strong><br>
+                        <b>ผู้รับบริการ:</b> ${item.PatientName || item.BorrowerName}<br>
+                        <b>หมู่บ้าน/ชุมชน:</b> ${commName}<br>
+                        <b>เบอร์โทรติดต่อ:</b> ${item.Phone || '-'}<br>
+                        <b>วันที่เริ่มขอยืม:</b> ${item.BorrowDate ? new Date(item.BorrowDate).toLocaleDateString('th-TH') : '-'}
                     </div>
                 `;
 
-                // สร้างหมุดปักแผนที่ผูกหน้าต่างป๊อปอัพพิกัด
-                const marker = L.marker([lat, lng]).bindPopup(popupContent);
-                marker.addTo(communityLayers[commName]);
+                L.marker([lat, lng]).bindPopup(popupContent).addTo(communityLayers[commName]);
             }
         }
     });
 
-    // บรรจุกลุ่มเลเยอร์ชุมชนทั้งหมดเข้าสู่คอนโทรลสวิตช์ควบคุมแผนที่
     const overlayMaps = {};
     for (let key in communityLayers) {
-        communityLayers[key].addTo(mapInstance); // เปิดทุกเลเยอร์แสดงผลทั้งหมดตั้งต้น
-        overlayMaps[`กลุ่มพิกัด: ${key}`] = communityLayers[key];
+        communityLayers[key].addTo(mapInstance);
+        overlayMaps[`เขตชุมชน: ${key}`] = communityLayers[key];
     }
 
     mapLayerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(mapInstance);
-    
-    // บังคับคำสั่งแก้ไขมิติขนาดแผนที่เพื่อป้องกันการประมวลผลการจัดเรียงพิกเซลแผนที่ผิดพลาดบนบราวเซอร์
-    setTimeout(() => {
-        mapInstance.invalidateSize();
-    }, 250);
+    setTimeout(() => { mapInstance.invalidateSize(); }, 200);
 }
 
-// ฟังก์ชันใช้ระบบเว็บ API ของเบราว์เซอร์ดึงค่าพิกัด GPS ปัจจุบัน ณ สถานที่หน้างานทำสัญญา
+// เรียกดึงตำแหน่งผ่านตัวเครื่องอุปกรณ์คอมพิวเตอร์พกพา/มือถือหน้างาน
 function getCurrentLocation() {
     if (!navigator.geolocation) {
-        Swal.fire('ข้อผิดพลาด', 'อุปกรณ์เครื่องนี้ไม่รองรับระบบเทคโนโลยี Geolocation ค้นหาพิกัด', 'error');
+        Swal.fire('ระบบไม่รองรับ', 'เบราว์เซอร์หรือเครื่องของคุณไม่เปิดสิทธิ์แชร์ระบบดาวเทียมระบุพิกัด', 'error');
         return;
     }
-
     Swal.fire({
-        title: 'กำลังเชื่อมต่อดาวเทียมพิกัด',
-        text: 'โปรดอนุญาตสิทธิ์เข้าถึงพิกัดที่หน้าจอ และรอสัญญาณดาวเทียมจับคู่ตำแหน่งสักครู่...',
+        title: 'กำลังคำนวณหาตำแหน่งดาวเทียม',
+        text: 'โปรดกดยอมรับแชร์สิทธิ์พิกัดบนหน้าต่างเว็บ และรอสัญญาณสักครู่...',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
     });
 
-    navigator.geolocation.getCurrentPosition((position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        document.getElementById('borrow-gps').value = `${lat}, ${lng}`;
-        Swal.fire('สำเร็จ', `ดึงค่าพิกัด GPS เรียบร้อยแล้ว (${lat}, ${lng})`, 'success');
+    navigator.geolocation.getCurrentPosition((pos) => {
+        document.getElementById('borrow-gps').value = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+        Swal.fire('สำเร็จ', 'ดึงตำแหน่งพิกัดภูมิศาสตร์ปัจจุบันเรียบร้อย', 'success');
     }, (err) => {
-        Swal.fire('ดึงพิกัดล้มเหลว', 'ไม่สามารถค้นหาตำแหน่งได้เนื่องจากผู้ใช้ไม่ได้กดยอมรับแชร์สิทธิ์พิกัด หรือสัญญาณอับขัดข้อง', 'error');
-    }, { enableHighAccuracy: true, timeout: 10000 });
+        Swal.fire('ขัดข้อง', 'สัญญาณดาวเทียมอับหรือผู้ใช้งานกดยกเลิกสิทธิ์ส่งต่อพิกัด', 'error');
+    }, { enableHighAccuracy: true, timeout: 8000 });
 }
 
-// การค้นหาข้อมูลคัดกรองแถวในตารางยืมคืนหน้าบ้านแบบ Reactive Realtime Search
 function filterBorrowTable() {
     const text = document.getElementById('search-borrow-table').value.toLowerCase();
     const rows = document.querySelectorAll('#borrow-rows tr');
-    
     rows.forEach(row => {
-        if(row.cells.length < 2) return;
-        const match = row.innerText.toLowerCase().includes(text);
-        row.style.display = match ? '' : 'none';
+        if (row.cells.length < 2) return;
+        row.style.display = row.innerText.toLowerCase().includes(text) ? '' : 'none';
     });
 }
 
-// ระบบดาวน์โหลดส่งออกเอกสารรายงานตารางมาเป็นไฟล์ Excel / CSV ที่รองรับฟอนต์ไทยสมบูรณ์
 function exportToCSV(sheetName) {
-    let sourceData = [];
-    if (sheetName === 'BorrowLog') sourceData = state.data;
-    if (sheetName === 'Equipments') sourceData = state.equipments;
-
-    if (sourceData.length === 0) {
-        Swal.fire('ระงับการทำงาน', 'ไม่มีชุดข้อมูลสารสนเทศอยู่ในคลังตารางรายงานที่จะจัดส่งออกได้', 'info');
+    let dataset = sheetName === 'BorrowLog' ? state.data : state.equipments;
+    if (dataset.length === 0) {
+        Swal.fire('ระงับสั่งงาน', 'ไม่มีตารางชุดข้อมูลที่จะดึงออกรายงานไฟล์', 'info');
         return;
     }
-
-    const columns = Object.keys(sourceData[0]);
-    let csvContent = "\uFEFF"; // ใส่เครื่องหมาย BOM หลีกเลี่ยงปัญหาภาษาไทยแสดงผลเป็นภาษาวิบัติในโปรแกรม Microsoft Excel
-    csvContent += columns.join(",") + "\n";
-
-    sourceData.forEach(row => {
-        let line = columns.map(col => {
-            let cell = row[col] === null || row[col] === undefined ? '' : String(row[col]);
-            cell = cell.replace(/"/g, '""');
-            if (cell.includes(',') || cell.includes('\n') || cell.includes('"')) {
-                cell = `"${cell}"`;
-            }
-            return cell;
+    const columns = Object.keys(dataset[0]);
+    let csvStr = "\uFEFF" + columns.join(",") + "\n";
+    dataset.forEach(row => {
+        let line = columns.map(c => {
+            let cell = row[c] === null || row[c] === undefined ? '' : String(row[c]);
+            return `"${cell.replace(/"/g, '""')}"`;
         });
-        csvContent += line.join(",") + "\n";
+        csvStr += line.join(",") + "\n";
     });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${sheetName}_Report_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.csv`;
-    document.body.appendChild(link);
+    link.download = `${sheetName}_Report.csv`;
     link.click();
-    document.body.removeChild(link);
 }
 
-// ส่วนงานแอดมิน: ฟังก์ชันรันจัดการกดลงทะเบียนบันทึกใบขอยืมพัสดุอุปกรณ์แพทย์ชิ้นใหม่
 async function submitBorrowForm(event) {
     event.preventDefault();
-    
-    Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({ title: 'กำลังบันทึกเอกสาร...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
     const payload = {
         EquipmentID: document.getElementById('borrow-eq-id').value,
@@ -447,172 +542,128 @@ async function submitBorrowForm(event) {
         GPS: document.getElementById('borrow-gps').value.trim(),
         BorrowDate: new Date(document.getElementById('borrow-date').value).toISOString(),
         Deposit: document.getElementById('borrow-deposit').value,
-        Note: document.getElementById('borrow-note').value,
-        blobs: [] // สามารถเขียนโปรแกรมแปลงรูปภาพใส่เข้าไปทาง FileReader เพิ่มเติมได้ทีหลัง
+        Note: document.getElementById('borrow-note').value
     };
 
     try {
         const res = await run('addBorrow', payload);
         if (res.success) {
-            Swal.fire('บันทึกสำเร็จ', 'ระบบได้ทำการลงทะเบียนเอกสารสัญญาใบยืมกายอุปกรณ์และตัดคลังเรียบร้อย', 'success');
+            Swal.fire('บันทึกสำเร็จ', 'ระบบลงทะเบียนพิมพ์สัญญาใบยืมอุปกรณ์เรียบร้อย', 'success');
             closeBorrowModal();
-            await loadSystemData(); // รีเฟรชโหลดหน้ากระดานใหม่ทั้งหมดแบบออโต้
-        } else {
-            Swal.fire('เกิดข้อผิดพลาดในการบันทึก', res.error, 'error');
+            await loadSystemData();
         }
-    } catch (e) {
-        Swal.fire('การเชื่อมต่อล้มเหลว', 'เกิดความผิดพลาดในการส่งถ่ายข้อมูลกับ API ตรวจสอบอินเทอร์เน็ต', 'error');
-    }
+    } catch (e) { Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดเครือข่าย', 'error'); }
 }
 
-// ส่วนงานแอดมิน: ทำเรื่องทำธุรกรรมส่งคืนพัสดุอุปกรณ์การแพทย์กลับเข้าคลัง
 function processReturnItem(id) {
     Swal.fire({
-        title: 'ยืนยันการรับคืนอุปกรณ์การแพทย์?',
-        text: "เมื่อกดยืนยัน อุปกรณ์จะปรับสถานะเป็นว่างพร้อมใช้งานส่งต่อให้ผู้ป่วยรายอื่นทันที",
+        title: 'ยืนยันรับคืนอุปกรณ์แพทย์?',
+        text: "กรอกข้อมูลบันทึกรายละเอียดเพื่อตรวจสอบสภาพตอนรับคืนสินค้าเข้าคลังชิ้นงาน",
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#0d9488',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'ยืนยันการรับคืนพัสดุ',
-        cancelButtonText: 'ยกเลิก',
+        confirmButtonText: 'ยืนยันรับคืน',
         input: 'text',
-        inputLabel: 'บันทึกหมายเหตุการรับคืน (เช่น สภาพอุปกรณ์ปกติดี, ชำรุดบางส่วน)',
-        inputPlaceholder: 'กรอกหมายเหตุเพิ่มเติม...'
+        inputPlaceholder: 'ตัวอย่าง: สภาพสมบูรณ์ดี, ชำรุดหักงอบางชิ้น...'
     }).then(async (result) => {
         if (result.isConfirmed) {
-            Swal.fire({ title: 'กำลังอัปเดตระบบคลัง...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-            try {
-                const res = await run('returnBorrow', { EntryID: id, ReturnDate: new Date().toISOString(), Note: result.value });
-                if (res.success) {
-                    Swal.fire('ทำรายการคืนสำเร็จ', 'อุปกรณ์แพทย์ได้รับการส่งคืนและอัปเดตยอดคงคลังแล้ว', 'success');
-                    await loadSystemData();
-                } else {
-                    Swal.fire('ข้อผิดพลาด API', res.error, 'error');
-                }
-            } catch (e) {
-                Swal.fire('ระบบขัดข้อง', 'ไม่สามารถเชื่อมฐานข้อมูลหลักทางระบบเครือข่ายได้', 'error');
+            Swal.fire({ title: 'กำลังตัดยอดคืนคลัง...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            const res = await run('returnBorrow', { EntryID: id, ReturnDate: new Date().toISOString(), Note: result.value || 'คืนสภาพปกติ' });
+            if (res.success) {
+                Swal.fire('รับคืนเสร็จสิ้น', 'อัปเดตยอดคงเหลือคลังพัสดุเรียบร้อย', 'success');
+                await loadSystemData();
             }
         }
     });
 }
 
-// ส่วนงานแอดมิน: ฟังก์ชันสั่งลบเอกสารบันทึกประวัติใบยืมพัสดุ
 function deleteBorrowRecord(id) {
     Swal.fire({
-        title: 'คุณมั่นใจที่จะลบรายการนี้ใช่ไหม?',
-        text: "ระวัง! การลบรายการนี้จะหายไปจากตารางประวัติถาวร และอุปกรณ์จะถูกดีดกลับมาว่างในคลังอัตโนมัติ",
+        title: 'มั่นใจขอลบรายการประวัตินี้?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e11d48',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'ยืนยันคำสั่งลบ',
-        cancelButtonText: 'ยกเลิก'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                const res = await run('deleteBorrow', { id: id });
-                if (res.success) {
-                    Swal.fire('ลบข้อมูลเรียบร้อย', 'ข้อมูลประวัติรายการดังกล่าวถูกถอนออกจากระบบแล้ว', 'success');
-                    await loadSystemData();
-                }
-            } catch(e){}
+        confirmButtonText: 'ยืนยันคำสั่งลบข้อมูล'
+    }).then(async (r) => {
+        if (r.isConfirmed) {
+            const res = await run('deleteBorrow', { id: id });
+            if (res.success) { Swal.fire('ถอนรากข้อมูลแล้ว', '', 'success'); await loadSystemData(); }
         }
     });
 }
 
-// ส่วนงานแอดมิน: การลงทะเบียนเครื่องมือชิ้นพัสดุอุปกรณ์แพทย์ตัวใหม่เข้าคลังสินค้า
 async function submitEquipmentForm(event) {
     event.preventDefault();
-    Swal.fire({ title: 'กำลังเพิ่มอุปกรณ์ในคลัง...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-    
+    Swal.fire({ title: 'กำลังบันทึกครุภัณฑ์...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     const payload = {
         EquipmentID: document.getElementById('eq-id').value.trim(),
         EquipmentName: document.getElementById('eq-name').value.trim(),
         SerialNumber: document.getElementById('eq-serial').value.trim()
     };
-
-    try {
-        const res = await run('addEquipment', payload);
-        if (res.success) {
-            Swal.fire('สำเร็จ', 'บันทึกประวัติเครื่องมืออุปกรณ์ใหม่เข้าคลังพร้อมให้กดยืมแล้ว', 'success');
-            closeEquipmentModal();
-            await loadSystemData();
-        } else {
-            Swal.fire('ล้มเหลว', res.error, 'error');
-        }
-    } catch(e){}
+    const res = await run('addEquipment', payload);
+    if (res.success) { Swal.fire('เพิ่มขึ้นคลังสำเร็จ', '', 'success'); closeEquipmentModal(); await loadSystemData(); }
 }
 
-// ส่วนงานแอนมิน: จัดเก็บฟอร์มบันทึกข้อมูลโครงสร้างระบบ (Settings)
+async function deleteEquipmentRecord(id) {
+    Swal.fire({
+        title: 'ยืนยันลบพัสดุอุปกรณ์ออกจากคลัง?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48'
+    }).then(async (r) => {
+        if (r.isConfirmed) {
+            const res = await run('deleteEquipment', { id: id });
+            if (res.success) { Swal.fire('ลบรายการสำเร็จ', '', 'success'); await loadSystemData(); }
+        }
+    });
+}
+
 async function saveSettingsForm(event) {
     event.preventDefault();
-    Swal.fire({ title: 'กำลังปรับใช้การตั้งค่าองค์กร...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-
+    Swal.fire({ title: 'กำลังปรับโครงสร้างระบบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     const rawComm = document.getElementById('set-communities').value.split('\n');
     const communities = [];
     rawComm.forEach(line => {
         const parts = line.split(',');
-        if (parts.length >= 2 && parts[0].trim() !== '' && parts[1].trim() !== '') {
-            communities.push({ moo: parts[0].trim(), name: parts[1].trim() });
-        }
+        if (parts.length >= 2) communities.push({ moo: parts[0].trim(), name: parts[1].trim() });
     });
 
     const payload = {
         agency1: document.getElementById('set-agency1').value.trim(),
         agency2: document.getElementById('set-agency2').value.trim(),
         oldLogoUrl: document.getElementById('set-logo-old').value,
-        communities: communities,
-        logoBase64: null
+        communities: communities
     };
 
-    const logoFile = document.getElementById('set-logo-file').files[0];
-    if (logoFile) {
-        const reader = new FileReader();
-        reader.readAsDataURL(logoFile);
-        reader.onload = async () => {
-            payload.logoBase64 = reader.result;
-            executeSaveSettings(payload);
+    const file = document.getElementById('set-logo-file').files[0];
+    if (file) {
+        const rd = new FileReader();
+        rd.readAsDataURL(file);
+        rd.onload = async () => {
+            payload.logoBase64 = rd.result;
+            const res = await run('saveSettings', payload);
+            if (res.success) { Swal.fire('อัปเดตระบบแล้ว', '', 'success'); await loadSystemData(); }
         };
     } else {
-        executeSaveSettings(payload);
+        const res = await run('saveSettings', payload);
+        if (res.success) { Swal.fire('อัปเดตระบบแล้ว', '', 'success'); await loadSystemData(); }
     }
 }
 
-async function executeSaveSettings(payload) {
-    try {
-        const res = await run('saveSettings', payload);
-        if (res.success) {
-            Swal.fire('ปรับค่าสำเร็จ', 'ระบบข้อมูลองค์กรและพิกัดหมู่บ้านชุมชนได้รับอัปเดตแล้ว', 'success');
-            await loadSystemData();
-        }
-    } catch(e){}
-}
-
-// ระบบพิสูจน์ยืนยันตัวตนแอดมินเจ้าหน้าที่ศูนย์กายอุปกรณ์เพื่อล็อกอิน
 async function submitLogin(event) {
     event.preventDefault();
-    Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์เข้าถึง...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-    
+    Swal.fire({ title: 'กำลังพิสูจน์สิทธิ์...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
     const uid = document.getElementById('login-uid').value;
-    const pwb = document.getElementById('login-pwd').value;
+    const pwd = document.getElementById('login-pwd').value;
 
-    try {
-        const res = await run('login', { adminId: uid, password: pwb });
-        if (res.success) {
-            localStorage.setItem('adminToken', res.token);
-            localStorage.setItem('adminId', res.adminId);
-            localStorage.setItem('adminName', res.adminName);
-            
-            Swal.fire('ยินดีต้อนรับเข้าสู่ระบบ', 'เจ้าหน้าที่ยืนยันตัวตนเสร็จสมบูรณ์ ยินดีต้อนรับเข้าจัดการระบบหลังบ้าน', 'success').then(() => {
-                window.location.reload(); // รีโหลดระบบเพื่อเซ็ตอินเทอร์เฟซเข้าโหมดเมนูด้านซ้าย Sidebar
-            });
-        } else {
-            Swal.fire('สิทธิ์เข้าถึงถูกปฏิเสธ', res.error, 'error');
-        }
-    } catch (e) {
-        Swal.fire('เซิร์ฟเวอร์ปฏิเสธการเชื่อมต่อ', 'กรุณาตรวจสอบโครงสร้างการดีพลอย์ API', 'error');
-    }
+    const res = await run('login', { adminId: uid, password: pwd });
+    if (res.success) {
+        localStorage.setItem('adminToken', res.token);
+        localStorage.setItem('adminId', res.adminId);
+        localStorage.setItem('adminName', res.adminName);
+        Swal.fire('สิทธิ์ล็อกอินผ่านสำเร็จ', 'ยินดีต้อนรับเข้าใช้งานหน้าต่างควบคุมเมนูแอดมิน', 'success').then(() => {
+            window.location.reload();
+        });
+    } else { Swal.fire('เข้าสู่ระบบล้มเหลว', res.error, 'error'); }
 }
 
 function logout() {
@@ -620,11 +671,9 @@ function logout() {
     window.location.reload();
 }
 
-// ฟังก์ชันเปิดและปิดใช้งานกล่องโมดอลตัวเลือกดีไซน์ต่าง ๆ บนหน้าแอปพลิเคชัน
 function openLoginModal() { document.getElementById('modal-login').classList.remove('hidden'); }
 function closeLoginModal() { document.getElementById('modal-login').classList.add('hidden'); }
 function openBorrowModal() { document.getElementById('modal-borrow').classList.remove('hidden'); }
 function closeBorrowModal() { document.getElementById('modal-borrow').classList.add('hidden'); }
 function openEquipmentModal() { document.getElementById('modal-equipment').classList.remove('hidden'); }
 function closeEquipmentModal() { document.getElementById('modal-equipment').classList.add('hidden'); }
-function toggleMobileSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
