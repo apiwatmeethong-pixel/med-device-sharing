@@ -171,7 +171,6 @@ function renderEquipmentTypeGrid() {
     if (!grid) return;
     grid.innerHTML = '';
     
-    // จัดกลุ่มประมวลผลประเภทอุปกรณ์พัสดุเพื่อนับจำนวนรวม ยืม คืน
     const groups = {};
     state.equipments.forEach(eq => {
         const name = eq.EquipmentName ? eq.EquipmentName.trim() : 'อุปกรณ์ทั่วไป';
@@ -191,7 +190,6 @@ function renderEquipmentTypeGrid() {
         return;
     }
     
-    // ลูปสร้างหน้าการ์ดแสดงยอดแบบสีแยกตามกลุ่มคำหลักพร้อมไอคอน FontAwesome
     for (let name in groups) {
         let icon = 'fa-kit-medical';
         let colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700';
@@ -290,7 +288,7 @@ function renderBorrowTable() {
     }
 }
 
-// 🟢 แก้ไขจุดบกพร่อง: เขียนเชื่อมต่อฟังก์ชันแสดงรายการฐานข้อมูลคลังกายอุปกรณ์อย่างสมบูรณ์
+// แสดงรายการฐานข้อมูลคลังกายอุปกรณ์อย่างสมบูรณ์
 function renderEquipmentTable() {
     const tbody = document.getElementById('equipment-rows');
     if (!tbody) return;
@@ -671,9 +669,10 @@ function logout() {
     window.location.reload();
 }
 
-function openLoginModal() { document.getElementById('modal-login').classList.remove('hidden'); }
-function closeLoginModal() { document.getElementById('modal-login').classList.add('hidden'); }
-function openBorrowModal() { document.getElementById('modal-borrow').classList.remove('hidden'); }
-function closeBorrowModal() { document.getElementById('modal-borrow').classList.add('hidden'); }
-function openEquipmentModal() { document.getElementById('modal-equipment').classList.remove('hidden'); }
-function closeEquipmentModal() { document.getElementById('modal-equipment').classList.add('hidden'); }
+// 🔐 ปรับปรุงฟังก์ชันควบคุม Modal เปลี่ยนมาใช้สเตทคลาส .active ควบคุมการแสดงผลร่วมกับสไตล์ชีตแทนการสู้ตรรกะคลาส
+function openLoginModal() { document.getElementById('modal-login').classList.add('active'); }
+function closeLoginModal() { document.getElementById('modal-login').classList.remove('active'); }
+function openBorrowModal() { document.getElementById('modal-borrow').classList.add('active'); }
+function closeBorrowModal() { document.getElementById('modal-borrow').classList.remove('active'); }
+function openEquipmentModal() { document.getElementById('modal-equipment').classList.add('active'); }
+function closeEquipmentModal() { document.getElementById('modal-equipment').classList.remove('active'); }
