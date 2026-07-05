@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-sarabun">
+
+    <aside id="sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full md:translate-x-0 bg-white border-r border-slate-100 flex flex-col justify-between hidden-important">
+        <div>
+            <div class="p-5 border-b border-slate-50 flex items-center gap-3 bg-indigo-50/40">
+                <img id="side-logo" src="https://via.placeholder.com/150" alt="Agency Logo" class="h-11 w-11 object-contain rounded-full shadow-sm bg-white" />
+                <div class="overflow-hidden">
+                    <h2 id="side-agency-title" class="text-sm font-bold text-slate-700 truncate">ศูนย์กายอุปกรณ์</h2>
+                    <span id="side-admin-badge" class="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-user-shield mr-1"></i>เจ้าหน้าที่</span>
+                </div>
+            </div>
+            <nav class="p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="btn-menu-dashboard" class="menu-item active w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-chart-pie text-lg text-indigo-400"></i> แดชบอร์ดสรุปผล
+                </button>
+                <button onclick="switchTab('borrow')" id="btn-menu-borrow" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-handshake text-lg text-teal-400"></i> บันทึกการยืม-คืน
+                </button>
+                <button onclick="switchTab('equipments')" id="btn-menu-equipments" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-wheelchair text-lg text-amber-400"></i> คลังกายอุปกรณ์
+                </button>
+                <button onclick="switchTab('map')" id="btn-menu-map" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-map-location-dot text-lg text-rose-400"></i> แผนที่พิกัดผู้ยืม (GPS)
+                </button>
+                <button onclick="switchTab('settings')" id="btn-menu-settings" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-sliders text-lg text-sky-400"></i> ตั้งค่าข้อมูลระบบ
+                </button>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-50 bg-slate-50/50">
+            <button onclick="logout()" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                <i class="fa-solid fa-arrow-right-from-bracket text-lg"></i> ออกจากระบบ Admin
+            </button>
+        </div>
+    </aside>
+
+    <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300 pl-0">
+        
+        <header class="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-30 print:hidden">
+            <div class="flex items-center gap-4">
+                <button id="sidebar-toggle" onclick="toggleMobileSidebar()" class="md:hidden text-slate-500 hover:bg-slate-100 p-2 rounded-lg">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div class="flex items-center gap-3" id="public-header-brand">
+                    <img id="nav-logo" src="https://via.placeholder.com/150" alt="Logo" class="h-12 w-auto object-contain" />
+                    <div>
+                        <h1 id="nav-title" class="text-lg font-bold text-slate-800">ระบบบริหารจัดการ ยืมคืนอุปกรณ์การแพทย์</h1>
+                        <p id="nav-subtitle" class="text-xs text-slate-400">งานบริการศูนย์กายอุปกรณ์ทางการแพทย์สาธารณสุข</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div id="pdpa-badge" class="hidden md:flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100/60">
+                    <i class="fa-solid fa-shield-halved text-sm text-emerald-500"></i> มาตรฐานความปลอดภัยข้อมูล PDPA
+                </div>
+                <button id="btn-login-trigger" onclick="openLoginModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-xs"></i> เข้าสู่ระบบ Admin
+                </button>
+                <div id="logged-admin-info" class="hidden flex items-center gap-2">
+                    <span id="display-admin-name" class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl">ผู้ใช้งาน: Admin</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 md:p-8 space-y-8 max-w-7xl w-full mx-auto">
+            
+            <div id="public-pdpa-banner" class="bg-amber-50 border border-amber-200/60 p-4 rounded-2xl flex gap-3 text-amber-900 text-sm print:hidden">
+                <i class="fa-solid fa-circle-info text-lg text-amber-500 mt-0.5"></i>
+                <div>
+                    <span class="font-bold">🛡️ ประกาศสิทธิ์การคุ้มครองข้อมูลส่วนบุคคล (PDPA):</span> ข้อมูลเลขบัตรประจำตัวประชาชนและเบอร์โทรศัพท์ของผู้ยืมจะถูกปกปิดเป็นความลับทางการแพทย์อย่างปลอดภัยในโหมดสากล เจ้าหน้าที่แอดมินเท่านั้นที่จะเข้าถึงข้อมูลฉบับเต็มเพื่อนำมาให้บริการได้
+                </div>
+            </div>
+
+            <section id="sec-dashboard" class="app-view space-y-6">
+                <div class="flex justify-between items-center print:hidden">
+                    <h3 class="text-xl font-bold text-slate-800">แดชบอร์ดสรุปผลการดำเนินงาน</h3>
+                    <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> พิมพ์หน้านี้
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" id="dashboard-kpi-grid">
+                    <div class="bg-blue-50/70 border border-blue-100/60 p-5 rounded-3xl relative overflow-hidden shadow-sm">
+                        <p class="text-xs font-bold text-blue-600/80 uppercase tracking-wider">อุปกรณ์ทั้งหมดในคลัง</p>
+                        <h4 id="stat-total-eq" class="text-3xl font-black text-blue-900 mt-2">0</h4>
+                        <i class="fa-solid fa-boxes-stacked text-5xl text-blue-200/60 absolute bottom-2 right-2"></i>
+                    </div>
+                    <div class="bg-emerald-50/70 border border-emerald-100/60 p-5 rounded-3xl relative overflow-hidden shadow-sm">
+                        <p class="text-xs font-bold text-emerald-600/80 uppercase tracking-wider">พร้อมใช้งาน (ว่าง)</p>
+                        <h4 id="stat-avail-eq" class="text-3xl font-black text-emerald-900 mt-2">0</h4>
+                        <i class="fa-solid fa-circle-check text-5xl text-emerald-200/60 absolute bottom-2 right-2"></i>
+                    </div>
+                    <div class="bg-rose-50/70 border border-rose-100/60 p-5 rounded-3xl relative overflow-hidden shadow-sm">
+                        <p class="text-xs font-bold text-rose-600/80 uppercase tracking-wider">ถูกยืมไปใช้งาน</p>
+                        <h4 id="stat-borrow-eq" class="text-3xl font-black text-rose-900 mt-2">0</h4>
+                        <i class="fa-solid fa-handshake-angle text-5xl text-rose-200/60 absolute bottom-2 right-2"></i>
+                    </div>
+                    <div class="bg-purple-50/70 border border-purple-100/60 p-5 rounded-3xl relative overflow-hidden shadow-sm">
+                        <p class="text-xs font-bold text-purple-600/80 uppercase tracking-wider">ประวัติทำรายการรวม</p>
+                        <h4 id="stat-total-logs" class="text-3xl font-black text-purple-900 mt-2">0</h4>
+                        <i class="fa-solid fa-clock-rotate-left text-5xl text-purple-200/60 absolute bottom-2 right-2"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden p-6 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
+                        <div>
+                            <h4 class="text-base font-bold text-slate-800">รายการขอยืมอุปกรณ์การแพทย์ในปัจจุบัน</h4>
+                            <p class="text-xs text-slate-400">ค้นหา ตรวจสอบข้อมูลสถานะการส่งมอบอุปกรณ์แก่ผู้ป่วย</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <input type="text" id="search-borrow-table" oninput="filterBorrowTable()" placeholder="ค้นหาชื่อผู้ยืม, อุปกรณ์..." class="border border-slate-200 px-4 py-2 rounded-xl text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                            <button onclick="exportToCSV('BorrowLog')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap">
+                                <i class="fa-solid fa-file-excel"></i> ส่งออก Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto rounded-2xl border border-slate-50">
+                        <table class="w-full text-left border-collapse table-report" id="tbl-borrow-log">
+                            <thead class="bg-slate-50/70 text-slate-600 text-xs font-bold uppercase">
+                                <tr>
+                                    <th class="p-4">รหัสอุปกรณ์</th>
+                                    <th class="p-4">ชื่อผู้ป่วย / ผู้ยืม</th>
+                                    <th class="p-4">เลขประจำตัวประชาชน</th>
+                                    <th class="p-4">ชุมชน/หมู่บ้าน</th>
+                                    <th class="p-4">วันที่ขอยืม</th>
+                                    <th class="p-4">เบอร์โทรศัพท์</th>
+                                    <th class="p-4">สถานะ</th>
+                                    <th class="p-4 admin-only hidden">การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-slate-100 text-slate-600" id="borrow-rows">
+                                <tr>
+                                    <td colspan="8" class="text-center p-8 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังประมวลผลดึงข้อมูล...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-borrow" class="app-view space-y-6 hidden">
+                <div class="flex justify-between items-center print:hidden">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">ระบบบันทึกงานยืม-คืนกายอุปกรณ์</h3>
+                        <p class="text-xs text-slate-400">สร้างเอกสารสัญญา ทำเรื่องคืนพัสดุอุปกรณ์แพทย์แก่ผู้รับบริการ</p>
+                    </div>
+                    <button onclick="openBorrowModal()" class="bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus"></i> บันทึกใบยืมใหม่
+                    </button>
+                </div>
+                <div id="borrow-admin-container" class="bg-white p-4 border border-slate-100 rounded-3xl shadow-sm">
+                    <p class="text-sm text-slate-400 p-4 text-center">เปิดระบบตารางข้อมูลหลักในส่วนการทำงานเมนูควบคุมแอดมินเรียบร้อยแล้ว</p>
+                </div>
+            </section>
+
+            <section id="sec-equipments" class="app-view space-y-6 hidden">
+                <div class="flex justify-between items-center print:hidden">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">ระบบคลังพัสดุอุปกรณ์การแพทย์</h3>
+                        <p class="text-xs text-slate-400">ตรวจสอบจำนวนเตียง, เครื่องผลิตออกซิเจน, เก้าอี้รถเข็น วอคเกอร์</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportToCSV('Equipments')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> ส่งออกคลัง
+                        </button>
+                        <button onclick="openEquipmentModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่มอุปกรณ์เข้าคลัง
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden p-6">
+                    <div class="overflow-x-auto rounded-2xl border border-slate-50">
+                        <table class="w-full text-left border-collapse table-report">
+                            <thead class="bg-slate-50/70 text-slate-600 text-xs font-bold uppercase">
+                                <tr>
+                                    <th class="p-4">รหัสอุปกรณ์ (ID)</th>
+                                    <th class="p-4">ชื่อหมวดหมู่อุปกรณ์</th>
+                                    <th class="p-4">หมายเลขซีเรียล (Serial No.)</th>
+                                    <th class="p-4">สถานะปัจจุบัน</th>
+                                    <th class="p-4 print:hidden">เครื่องมือ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-slate-100 text-slate-600" id="equipment-rows">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-map" class="app-view space-y-6 hidden">
+                <div class="flex justify-between items-center print:hidden">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">ระบบพิกัดภูมิสารสนเทศผู้ขอยืมอุปกรณ์</h3>
+                        <p class="text-xs text-slate-400">แสดงพิกัดบ้านผู้ยืมในพื้นที่ผ่านเทคโนโลยีแผนที่ Leaflet (แยกวิเคราะห์รายชุมชน)</p>
+                    </div>
+                    <div class="bg-white px-3 py-1.5 rounded-xl border border-slate-100 text-xs text-slate-500">
+                        💡 สามารถกดยกเลิกหรือเลือกเลเยอร์เปิดแผนที่ดาวเทียม / จำแนกรายหมู่บ้านได้ที่มุมบนขวาแผนที่
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden p-4">
+                    <div id="map-canvas" class="w-full rounded-2xl border border-slate-100 shadow-inner" style="height: 550px; z-index: 10;"></div>
+                </div>
+            </section>
+
+            <section id="sec-settings" class="app-view space-y-6 hidden">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">ตั้งค่าข้อมูลโครงสร้างระบบ</h3>
+                    <p class="text-xs text-slate-400">ปรับเปลี่ยนข้อมูลหน่วยงานสาธารณสุข ลิงก์โลโก้ และข้อมูลรายชื่อหมู่บ้าน/ชุมชน</p>
+                </div>
+
+                <div class="bg-white border border-slate-100 rounded-3xl shadow-sm p-6 max-w-2xl">
+                    <form id="form-settings" onsubmit="saveSettingsForm(event)" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">อัปโหลดรูปภาพโลโก้หน่วยงาน</label>
+                            <input type="file" id="set-logo-file" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                            <input type="hidden" id="set-logo-old" />
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">ชื่อระบบงาน / ชื่อองค์กรบรรทัดที่ 1</label>
+                                <input type="text" id="set-agency1" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none" required />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">ชื่อหน่วยงานย่อยบรรทัดที่ 2</label>
+                                <input type="text" id="set-agency2" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none" required />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">รายการข้อมูลชุมชน / หมู่บ้าน (คั่นรายการด้วยจุลภาค: หมู่,ชื่อชุมชน และขึ้นบรรทัดใหม่)</label>
+                            <textarea id="set-communities" rows="6" class="w-full border border-slate-200 px-4 py-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none font-mono" placeholder="1,ชุมชนบ้านป่าขาม&#10;2,ชุมชนธนวรรณ"></textarea>
+                        </div>
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-sm transition">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> บันทึกการตั้งค่าระบบข้อมูล
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </main>
+
+        <footer class="bg-white border-t border-slate-100 py-4 px-6 text-center text-xs text-slate-400 font-medium mt-auto print:hidden">
+            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.0 | Design & Developed by Apiwat Meethong</div>
+        </footer>
+    </div>
+
+    <div id="modal-login" class="modal-backdrop hidden">
+        <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 w-full max-w-md mx-4 animate-scale">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-indigo-50 rounded-xl text-indigo-600"><i class="fa-solid fa-lock-open"></i></div>
+                    <h4 class="font-bold text-slate-800 text-base">เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h4>
+                </div>
+                <button onclick="closeLoginModal()" class="text-slate-400 hover:bg-slate-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Admin ID</label>
+                    <input type="text" id="login-uid" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none" required />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Password</label>
+                    <input type="password" id="login-pwd" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none" required />
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-md shadow-indigo-600/10 transition mt-2">
+                    ยืนยันการเข้าใช้งานระบบ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-borrow" class="modal-backdrop hidden">
+        <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-scale">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-teal-50 rounded-xl text-teal-600"><i class="fa-solid fa-file-signature"></i></div>
+                    <h4 id="borrow-modal-title" class="font-bold text-slate-800 text-base">บันทึกสัญญาการยืมอุปกรณ์ใหม่</h4>
+                </div>
+                <button onclick="closeBorrowModal()" class="text-slate-400 hover:bg-slate-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <form id="form-borrow" onsubmit="submitBorrowForm(event)" class="space-y-4 text-sm">
+                <input type="hidden" id="borrow-entry-id" />
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">เลือกอุปกรณ์ในคลังที่พร้อมใช้งาน</label>
+                        <select id="borrow-eq-id" onchange="syncSerialNumber()" class="w-full border border-slate-200 px-3 py-2 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">หมายเลขซีเรียลชิ้นพัสดุ</label>
+                        <input type="text" id="borrow-serial" class="w-full border border-slate-100 bg-slate-50 px-3 py-2 rounded-xl text-slate-500 outline-none" readonly />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อผู้ป่วย / ผู้รับบริการ</label>
+                        <input type="text" id="borrow-patient" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อผู้ทำสัญญาขอยืมแทน (หากมี)</label>
+                        <input type="text" id="borrow-name" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="กรณีผู้ป่วยไม่ได้มายืมด้วยตนเอง" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">เลขบัตรประจำตัวประชาชน</label>
+                        <input type="text" id="borrow-citizen" maxlength="13" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ตัวเลข 13 หลัก" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="text" id="borrow-phone" maxlength="10" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="เบอร์โทรผู้รับบริการ" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">ความสัมพันธ์กับผู้ป่วย</label>
+                        <input type="text" id="borrow-relationship" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ตนเอง, บุตร, สามี-ภรรยา" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">เลือกเขตชุมชน / หมู่บ้าน</label>
+                        <select id="borrow-community" class="w-full border border-slate-200 px-3 py-2 rounded-xl bg-white focus:outline-none" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">บ้านเลขที่ / ที่อยู่ผู้ป่วย</label>
+                        <input type="text" id="borrow-address" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="เลขที่ หมู่ ถนน ซอย" required />
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">ข้อมูลพิกัดบ้านผู้ป่วยภูมิศาสตร์ (GPS Coordinates)</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="borrow-gps" placeholder="ตัวอย่าง: 18.23456, 99.42345" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none text-sm bg-white font-mono" />
+                        <button type="button" onclick="getCurrentLocation()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap text-xs shadow-sm border border-indigo-100">
+                            <i class="fa-solid fa-location-crosshairs text-indigo-500"></i> ดึงพิกัดปัจจุบัน
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">คำเตือน: โปรดกรอกเป็นละติจูดและลองจิจูดคั่นด้วยเครื่องหมายจุลภาค หรือกดปุ่มดึงพิกัดจากระบบดาวเทียมมือถือ/คอมพิวเตอร์หน้างาน</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">วันที่ทำสัญญายืม</label>
+                        <input type="date" id="borrow-date" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">เงินค่ามัดจำประกันพัสดุ (บาท)</label>
+                        <input type="number" id="borrow-deposit" value="0" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">หมายเหตุ / ข้อมูลเพิ่มเติม</label>
+                    <textarea id="borrow-note" rows="2" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">แนบรูปภาพสภาพอุปกรณ์ขอยืม (สูงสุด 3 รูป)</label>
+                    <input type="file" id="borrow-images" accept="image/*" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" />
+                </div>
+
+                <div class="flex items-start gap-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/40 mt-2">
+                    <input type="checkbox" id="borrow-pdpa-check" class="mt-0.5 rounded focus:ring-emerald-500 accent-emerald-600 h-4 w-4" required />
+                    <label for="borrow-pdpa-check" class="text-xs text-emerald-800 leading-tight">
+                        ข้าพเจ้ายืนยันในฐานะเจ้าหน้าที่ว่า ได้ทำการแจ้งนโยบายและได้รับความยินยอมในการเก็บรวบรวมข้อมูลส่วนบุคคลจากเจ้าของข้อมูล (ผู้ป่วยหรือญาติ) ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) เรียบร้อยแล้ว
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeBorrowModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl font-medium">ยกเลิก</button>
+                    <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-xl font-semibold shadow-md shadow-teal-600/10">บันทึกสัญญายืม</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-equipment" class="modal-backdrop hidden">
+        <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 w-full max-w-md mx-4 animate-scale">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-amber-50 rounded-xl text-amber-600"><i class="fa-solid fa-wheelchair"></i></div>
+                    <h4 class="font-bold text-slate-800 text-base">บันทึกอุปกรณ์ทางการแพทย์</h4>
+                </div>
+                <button onclick="closeEquipmentModal()" class="text-slate-400 hover:bg-slate-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitEquipmentForm(event)" class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">รหัสพัสดุอุปกรณ์ (Equipment ID)</label>
+                    <input type="text" id="eq-id" placeholder="ตัวอย่าง: EQ-01" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อเรียกหมวดหมู่อุปกรณ์</label>
+                    <input type="text" id="eq-name" placeholder="ตัวอย่าง: เตียง, ถังออกซิเจน 1.5 คิว" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">หมายเลขรหัสประจำชิ้นอุปกรณ์ (Serial Number)</label>
+                    <input type="text" id="eq-serial" placeholder="ตัวอย่าง: เตียง-1, OX-092" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeEquipmentModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl font-medium">ยกเลิก</button>
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl font-semibold shadow-md shadow-amber-600/10">บันทึกพัสดุ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

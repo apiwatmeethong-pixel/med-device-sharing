@@ -1,0 +1,136 @@
+/**
+ * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Custom Stylesheet Theme
+ * โทนสี: มินิมัล พาสเทลสดใสเด่นชัด (Bright Minimal Pastel Accent)
+ */
+
+body {
+    background-color: #f8fafc;
+    font-family: 'Sarabun', sans-serif;
+    overflow-x: hidden;
+}
+
+/* คลาสบังคับเปิด-ปิดแถบเมนูข้างเลย์เอาต์ */
+.hidden-important {
+    display: none !important;
+}
+@media (min-width: 768px) {
+    #sidebar.hidden-important {
+        display: flex !important;
+    }
+}
+
+/* การตกแต่งสไตล์ปุ่มนำทางรายเมนูด้านข้าง Left Sidebar */
+.menu-item {
+    color: #475569;
+    background-color: transparent;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-item:hover {
+    color: #4f46e5;
+    background-color: #f1f5f9;
+    transform: translateX(4px);
+}
+.menu-item.active {
+    color: #4f46e5;
+    background-color: #e0e7ff;
+    font-weight: 600;
+    box-shadow: inset 4px 0 0 #4f46e5;
+}
+
+/* รูปแบบความสวยงามของตารางแสดงรายงานข้อมูล */
+.table-report th {
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    background-color: #f8fafc;
+    border-bottom: 2px solid #f1f5f9;
+}
+.table-report td {
+    padding: 1rem 0.9rem;
+    vertical-align: middle;
+}
+
+/* พื้นหลังฉากหลังกล่องเปิดปิดโมดอล Modal Backdrop Overlay */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.3s ease;
+}
+
+.animate-scale {
+    animation: zoomInEffect 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zoomInEffect {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* ฟีเจอร์ตกแต่งป๊อปอัพพิกัด GPS แผนที่ Leaflet */
+.leaflet-popup-content-wrapper {
+    border-radius: 1.25rem !important;
+    padding: 0.25rem !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+}
+.leaflet-bar {
+    border: none !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+}
+.leaflet-bar a {
+    border-radius: 0.5rem !important;
+    border-bottom: none !important;
+    margin-bottom: 2px;
+}
+
+/* 🖨️ มาตรฐานและสไตล์สำหรับกระบวนการสั่งพิมพ์รายงานเอกสารออกเครื่องพิมพ์ (CSS Media Print) */
+@media print {
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: 12px;
+    }
+    
+    /* ซ่อนแถบด้านซ้าย แถบด้านบน ปุ่มกดค้นหา และปุ่มแอดมินทั้งหมดเพื่อความสะอาดหรูหราของแผ่นรายงาน */
+    #sidebar, header, .print\:hidden, button, input, select, textarea, #public-pdpa-banner, .leaflet-control-container {
+        display: none !important;
+    }
+    
+    #main-wrapper {
+        padding-left: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .app-view, .bg-white {
+        display: block !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    
+    table th, table td {
+        border: 1px solid #cbd5e1 !important;
+        color: #000000 !important;
+        padding: 6px 8px !important;
+    }
+    
+    h3, h4 {
+        color: #000000 !important;
+        font-size: 16px !important;
+        margin-bottom: 10px !important;
+    }
+}
