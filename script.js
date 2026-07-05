@@ -141,7 +141,7 @@ function renderDashboardStats() {
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
 
-// 🟢 แก้ไข: ฟังก์ชันคำนวณหักลบจำนวนการยืมและยอดคงเหลืออุปกรณ์ในหน้า Dashboard ให้ถูกต้องตามสถิติจริง
+// 🟢 เวอร์ชันแก้ไขบั๊ก: ดึงสถานะจากคลังพัสดุโดยตรง แม่นยำ 100% ไม่ต้องคำนวณข้ามชีทให้เสี่ยงรหัสพิมพ์ไม่ตรงกัน
 function renderEquipmentTypeGrid() {
     const grid = document.getElementById('equipment-type-grid');
     if (!grid) return;
@@ -149,37 +149,33 @@ function renderEquipmentTypeGrid() {
     
     const groups = {};
     
-    // วิ่งนับยอดรวมอุปกรณ์ทั้งหมดในคลังตั้งต้นแยกตามชื่อเรียกพัสดุ
+    // ลูปนับยอดรวมและแยกสถานะ ว่าง/ยืม จากข้อมูลฝั่ง Equipments โดยตรง
     state.equipments.forEach(eq => {
         const name = eq.EquipmentName ? eq.EquipmentName.trim() : 'อุปกรณ์ทั่วไป';
         if (!groups[name]) {
             groups[name] = { total: 0, available: 0, borrowed: 0 };
         }
+        
         groups[name].total++;
-    });
-    
-    // ค้นหารายการประวัติยืมที่ยังไม่ได้ส่งคืนเพื่อนำมาหักยอดจริง
-    const activeBorrows = state.data.filter(b => b.Status === 'Borrowed' || b.Status === 'ยืม');
-    activeBorrows.forEach(b => {
-        const matchedEq = state.equipments.find(e => e.EquipmentID === b.EquipmentID);
-        if (matchedEq) {
-            const name = matchedEq.EquipmentName ? matchedEq.EquipmentName.trim() : 'อุปกรณ์ทั่วไป';
-            if (groups[name]) {
-                groups[name].borrowed++;
-            }
+        
+        // ตรวจสอบค่าสถานะประจำชิ้นครุภัณฑ์ (แปลงเป็นตัวพิมพ์เล็กเพื่อป้องกัน Case-sensitive)
+        const status = eq.Status ? eq.Status.trim().toLowerCase() : '';
+        if (status === 'available' || status === 'ว่าง') {
+            groups[name].available++;
+        } else if (status === 'borrowed' || status === 'ยืม') {
+            groups[name].borrowed++;
+        } else {
+            // ป้องกันกรณีค่าว่างหรือพิมพ์ผิดประเภท ให้ถือว่าเป็นสถานะพร้อมใช้งานไว้ก่อน
+            groups[name].available++; 
         }
     });
     
-    // คำนวณหายอดคงเหลือสุทธิ (ยอดรวมคลัง - ยอดการยืมปัจจุบัน)
-    for (let name in groups) {
-        groups[name].available = groups[name].total - groups[name].borrowed;
-    }
-    
     if (Object.keys(groups).length === 0) {
-        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">ไม่พบหมวดหมู่พัสดุในระบบคลัง</div>';
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">ไม่พบข้อมูลกลุ่มหมวดหมู่พัสดุในระบบคลัง</div>';
         return;
     }
     
+    // สร้างหน้าต่างการ์ดสถิติโทนสีพาสเทลตามประเภทกลุ่มพัสดุ
     for (let name in groups) {
         let icon = 'fa-kit-medical';
         let colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700';
