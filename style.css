@@ -63,7 +63,7 @@ body {
     vertical-align: middle;
 }
 
-/* สไตล์พื้นหลังโมดอลป๊อปอัพเด้ง */
+/* 🔒 ปรับปรุงโครงสร้างสไตล์แบ็คดรอป: บังคับซ่อนสถานะเริ่มต้นอย่างเด็ดขาด ป้องกันบั๊กเปิดมาเจอหน้าต่างค้างเอง */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -76,11 +76,19 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 100;
+    
+    /* ซ่อนตัวเองจากการมองเห็นและตัดสิทธิ์การคลิกผ่านหน้าต่างโดยสมบูรณ์เมื่อเริ่มต้น */
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-/* ✅ เพิ่มส่วนนี้: ป้องกันสิทธิ์ระดับความสำคัญชนกับคลาส hidden ของ Tailwind CSS เพื่อแก้ไขบั๊กกล่องเด้งเอง */
-.modal-backdrop.hidden {
-    display: none !important;
+/* แสดงผลอย่างสง่างามพร้อมแอนิเมชันนุ่มนวลเมื่อได้รับคลาส .active เท่านั้น */
+.modal-backdrop.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .animate-scale {
