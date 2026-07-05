@@ -5,8 +5,8 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
 
-// 🟢 เวอร์ชันแก้ไขบั๊กเครื่องหมาย: ใช้เครื่องหมายคำพูดคู่ครอบ และด้านในเป็นเครื่องหมายเดี่ยว ปลอดภัย 100%
-const DEFAULT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' rx='30' fill='%23e0e7ff'/><circle cx='60' cy='60' r='40' fill='%234f46e5'/><path d='M60 42v36M42 60h36' stroke='white' stroke-width='10' stroke-linecap='round'/></svg>";
+// 🟢 เวอร์ชันแก้ไขบั๊กถาวร: แปลง SVG เป็นรหัส Base64 ป้องกันเครื่องหมายและตัวเลขชนกับระบบโครงสร้างเว็บ 100%
+const DEFAULT_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIzMCIgZmlsbD0iI2UwZTdmZiIvPjxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjQwIiBmaWxsPSIjNGY0NmU1Ii8+PHBhdGggZD0iTTYwIDQydjM2TTQyIDYwaDM2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=";
 
 let state = {
     isAdmin: false,
