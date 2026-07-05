@@ -1,5 +1,5 @@
 /**
- * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Custom Stylesheet Theme (v2.1)
+ * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Custom Stylesheet Theme (v2.2)
  * แฟชั่นสไตล์: พาสเทลสดใสเด่นชัด & ซ่อนหดแถบเมนู (Pastel Palette & Collapsible Layout)
  */
 
@@ -9,7 +9,6 @@ body {
     overflow-x: hidden;
 }
 
-/* คลาสควบคุมปรับสไตล์แถบรายการปุ่มเมนูด้านซ้าย Sidebar */
 .menu-item {
     color: #475569;
     background-color: transparent;
@@ -26,7 +25,6 @@ body {
     border-left-color: #4f46e5;
 }
 
-/* โครงสร้าง CSS บังคับการซ่อนหดย่อหน้าจอเมนูด้านซ้ายและจัดพื้นที่เพื่อแก้ปัญหาตัวอักษรทับซ้อน */
 #sidebar.collapsed {
     width: 72px !important;
 }
@@ -51,7 +49,6 @@ body {
     padding-left: 72px !important;
 }
 
-/* รูปลักษณ์ตารางสรุปรายงานข้อมูล */
 .table-report th {
     font-weight: 700;
     color: #475569;
@@ -63,7 +60,6 @@ body {
     vertical-align: middle;
 }
 
-/* 🔒 ปรับปรุงโครงสร้างสไตล์แบ็คดรอป: บังคับซ่อนสถานะเริ่มต้นอย่างเด็ดขาด ป้องกันบั๊กเปิดมาเจอหน้าต่างค้างเอง */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -77,14 +73,12 @@ body {
     justify-content: center;
     z-index: 100;
     
-    /* ซ่อนตัวเองจากการมองเห็นและตัดสิทธิ์การคลิกผ่านหน้าต่างโดยสมบูรณ์เมื่อเริ่มต้น */
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-/* แสดงผลอย่างสง่างามพร้อมแอนิเมชันนุ่มนวลเมื่อได้รับคลาส .active เท่านั้น */
 .modal-backdrop.active {
     visibility: visible;
     opacity: 1;
@@ -99,9 +93,8 @@ body {
     to { transform: scale(1); opacity: 1; }
 }
 
-/* ฟอร์แมตสิ่งกีดขวางเวลากดพิมพ์งานออกทางกระดาษ */
 @media print {
-    #sidebar, header, .print\:hidden, button, input, select, textarea, #public-pdpa-banner, .leaflet-control-container {
+    #sidebar, header, .print\:hidden, button, input, select, textarea, #public-pdpa-banner, .leaflet-control-container, .modal-backdrop {
         display: none !important;
     }
     #main-wrapper {
