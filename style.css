@@ -21,7 +21,7 @@ body {
 }
 .menu-item.active {
     color: #4f46e5;
-    background-color: #e0e7ff/60;
+    background-color: #e0e7ff;
     font-weight: 600;
     border-left-color: #4f46e5;
 }
