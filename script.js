@@ -132,27 +132,27 @@ function applySystemConfiguration() {
     }
 }
 
-// 🟢 เวอร์ชันแก้ไขบั๊กการ์ดสรุปยอด: คำนวณหักลบตัวเลขทางคณิตศาสตร์ถูกต้องแม่นยำ 100%
+// 🟢 เวอร์ชันล็อกความถูกต้องคณิตศาสตร์: คำนวณหักลบยอดรวมกับยอดสมบูรณ์จริง ป้องกันตัวเลขขัดแย้ง 100%
 function renderDashboardStats() {
-    // 1. ยอดรวมอุปกรณ์ทั้งหมดในคลัง
+    // 1. นับจำนวนอุปกรณ์รวมทั้งหมดในคลังพัสดุหลัก
     const totalEq = state.equipments.length;
     document.getElementById('stat-total-eq').innerText = totalEq;
     
-    // 2. ยอดถูกยืมไปใช้งานจริง (คำนวณแบบรองรับลูกผสมทั้งรูปแบบ Object และ Array ลำดับที่ 8)
+    // 2. คำนวณยอดถูกยืมไปใช้งานจริง ณ ปัจจุบันจากตารางประวัติ (รองรับลูกผสม Array ดัชนี 8 และ Object)
     const borrowedCount = state.data.filter(b => {
-        const status = b.Status || b[8];
-        return status === 'Borrowed' || status === 'ยืม';
+        const status = (b.Status || b[8] || '').toString().trim().toLowerCase();
+        return status === 'borrowed' || status === 'ยืม';
     }).length;
     document.getElementById('stat-borrow-eq').innerText = borrowedCount;
     
-    // 3. ยอดพร้อมใช้งานว่างสุทธิ (คิดจาก ยอดรวมทั้งหมด หักลบ ยอดที่ถูกยืมจริง เพื่อป้องกันตัวเลขขัดแย้ง)
+    // 3. บังคับหักลบยอดพร้อมใช้งาน (ว่าง) สุทธิด้วยสมการคณิตศาสตร์ (ยอดคลังทั้งหมด - ยอดกำลังยืม)
+    // วิธีนี้จะการันตีความสอดคล้องของตัวเลขบนหน้าแดชบอร์ด โดยไม่เกิดปัญหาข้อมูลไม่ซิงค์กัน
     const availableCount = totalEq - borrowedCount;
     document.getElementById('stat-avail-eq').innerText = availableCount >= 0 ? availableCount : 0;
     
-    // 4. ประวัติประทับตราบันทึกรวมทั้งหมดในตาราง Log
+    // 4. แสดงผลยอดรวมแถวบันทึกประวัติทั้งหมดในตาราง Log
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
-
 // 🟢 เวอร์ชันตรรกะลูกผสม (Fail-Safe): ป้องกันปัญหาโครงสร้างสลับแบบ Object / Array สรุปยอดถูกต้อง 100%
 function renderEquipmentTypeGrid() {
     const grid = document.getElementById('equipment-type-grid');
