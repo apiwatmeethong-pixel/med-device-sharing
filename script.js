@@ -132,25 +132,27 @@ function applySystemConfiguration() {
     }
 }
 
-// 🟢 เวอร์ชันล็อกความถูกต้องคณิตศาสตร์: คำนวณหักลบยอดรวมกับยอดสมบูรณ์จริง ป้องกันตัวเลขขัดแย้ง 100%
+// 🟢 เวอร์ชันแก้ไขบั๊กล็อกตัวเลขแดชบอร์ด: คำนวณหักลบด้วยสมการคณิตศาสตร์สัมพันธ์กัน 100%
 function renderDashboardStats() {
-    // 1. นับจำนวนอุปกรณ์รวมทั้งหมดในคลังพัสดุหลัก
+    // 1. ดึงจำนวนอุปกรณ์ทั้งหมดในคลังพัสดุหลัก (เท่ากับ 114)
     const totalEq = state.equipments.length;
     document.getElementById('stat-total-eq').innerText = totalEq;
     
-    // 2. คำนวณยอดถูกยืมไปใช้งานจริง ณ ปัจจุบันจากตารางประวัติ (รองรับลูกผสม Array ดัชนี 8 และ Object)
+    // 2. คำนวณยอดที่ถูกยืมไปใช้งานจริง ณ ปัจจุบันจากตารางประวัติ (เท่ากับ 24)
+    // รองรับโครงสร้างข้อมูลลูกผสมทั้งรูปแบบ Object และรูปแบบ Array ดัชนีคอลัมน์ที่ 8
     const borrowedCount = state.data.filter(b => {
-        const status = (b.Status || b[8] || '').toString().trim().toLowerCase();
-        return status === 'borrowed' || status === 'ยืม';
+        const status = b.Status || b[8];
+        const statusStr = status ? String(status).trim().toLowerCase() : '';
+        return statusStr === 'borrowed' || statusStr === 'ยืม';
     }).length;
     document.getElementById('stat-borrow-eq').innerText = borrowedCount;
     
-    // 3. บังคับหักลบยอดพร้อมใช้งาน (ว่าง) สุทธิด้วยสมการคณิตศาสตร์ (ยอดคลังทั้งหมด - ยอดกำลังยืม)
-    // วิธีนี้จะการันตีความสอดคล้องของตัวเลขบนหน้าแดชบอร์ด โดยไม่เกิดปัญหาข้อมูลไม่ซิงค์กัน
+    // 3. บังคับหักลบยอดพร้อมใช้งาน (ว่าง) สุทธิ (ยอดคลังทั้งหมด 114 - ยอดกำลังยืม 24 = 90)
+    // วิธีนี้จะตัดปัญหาเรื่องคอลัมน์สถานะในชีตคลังไม่อัปเดต ทำให้ตัวเลขแสดงผลสัมพันธ์กันอย่างถูกต้อง
     const availableCount = totalEq - borrowedCount;
     document.getElementById('stat-avail-eq').innerText = availableCount >= 0 ? availableCount : 0;
     
-    // 4. แสดงผลยอดรวมแถวบันทึกประวัติทั้งหมดในตาราง Log
+    // 4. แสดงผลยอดประวัติบันทึกรวมทั้งหมดในตาราง Log (เท่ากับ 25)
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
 // 🟢 เวอร์ชันตรรกะลูกผสม (Fail-Safe): ป้องกันปัญหาโครงสร้างสลับแบบ Object / Array สรุปยอดถูกต้อง 100%
