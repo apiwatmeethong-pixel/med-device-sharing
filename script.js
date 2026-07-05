@@ -5,7 +5,8 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
 
-const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx='60' cy='60' r='40' fill='%234f46e5'/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
+// 🟢 แก้ไขบั๊กเครื่องหมายชนกันด้วยการใช้ Backtick (``) ครอบ SVG แทน
+const DEFAULT_LOGO = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>`;
 
 let state = {
     isAdmin: false,
@@ -200,7 +201,6 @@ function renderBorrowTable() {
     });
 }
 
-// ✅ เรนเดอร์ชุดจัดการแอดมิน คัดกรอง ค้นหา และทำปุ่มพลิกหน้า (Pagination)
 function renderAdminBorrowContainer() {
     const wrapper = document.getElementById('borrow-admin-table-wrapper');
     if (!wrapper) return;
@@ -302,7 +302,6 @@ function changeAdminPage(target) {
     renderAdminBorrowContainer();
 }
 
-// ✅ ออกแบบฟังก์ชันคำสั่งพิมพ์ใบยืมสัญญากายอุปกรณ์ ล็อกตามฟอร์แมต PDF เขลางค์นคร เป๊ะๆ
 function printLoanReceipt(entryId) {
     const row = state.data.find(r => (r.EntryID || r[0]) === entryId);
     if (!row) return;
@@ -334,7 +333,7 @@ function printLoanReceipt(entryId) {
     document.getElementById('print-relation').innerText = row.Relationship || row[14] || 'ตนเอง';
     document.getElementById('print-deposit').innerText = row.Deposit || row[15] || '0';
 
-    // ยิงคำสั่งปริ้นท์ของตัวเบราว์เซอร์ (CSS Lock จะจัดการซ่อนหน้าเว็บส่วนอื่นให้เอง)
+    // ยิงคำสั่งปริ้นท์ของตัวเบราว์เซอร์
     window.print();
 }
 
