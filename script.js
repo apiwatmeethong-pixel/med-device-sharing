@@ -141,7 +141,7 @@ function renderDashboardStats() {
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
 
-// 🟢 เวอร์ชันแก้ไขบั๊ก: ปรับดัชนีเข้าหาตัวแปร Array ของระบบดั้งเดิม คำนวณยอดหักลบแม่นยำ 100%
+// 🟢 เวอร์ชันตรรกะลูกผสม (Fail-Safe): ป้องกันปัญหาโครงสร้างสลับแบบ Object / Array สรุปยอดถูกต้อง 100%
 function renderEquipmentTypeGrid() {
     const grid = document.getElementById('equipment-type-grid');
     if (!grid) return;
@@ -149,29 +149,44 @@ function renderEquipmentTypeGrid() {
     
     const groups = {};
     
-    // 1. ดึงชื่อกลุ่มและนับยอดตั้งต้นพัสดุทั้งหมดจากดัชนีแถวคลัง eq[1]
+    // 1. ดึงชื่อกลุ่มอุปกรณ์และนับยอดตั้งต้นพัสดุ (รองรับทั้ง eq.EquipmentName และ eq[1])
     state.equipments.forEach(eq => {
-        const name = eq[1] ? String(eq[1]).trim() : 'อุปกรณ์ทั่วไป';
+        let name = eq.EquipmentName || eq[1];
+        name = name ? String(name).trim() : 'อุปกรณ์ทั่วไป';
+        
         if (!groups[name]) {
             groups[name] = { total: 0, available: 0, borrowed: 0 };
         }
         groups[name].total++;
     });
     
-    // 2. ดึงแถวประวัติการยืมที่สถานะเป็นกำลังยืม r[8] === 'Borrowed' และใช้รหัส r[5] จับคู่หารายชื่อกลุ่มอุปกรณ์
-    const activeBorrows = state.data.filter(r => r[8] === 'Borrowed' || r[8] === 'ยืม');
+    // 2. ดึงรายการประวัติยืมเฉพาะที่สถานะเป็นกำลังยืม (รองรับทั้ง r.Status และ r[8])
+    const activeBorrows = state.data.filter(r => {
+        const status = r.Status || r[8];
+        return status === 'Borrowed' || status === 'ยืม';
+    });
+    
+    // 3. วิ่งนับยอดถูกยืมแยกตามหมวดหมู่จริง โดยจับคู่รหัสอุปกรณ์จากคลังพัสดุหลัก
     activeBorrows.forEach(r => {
-        const eqId = String(r[5]); // ดัชนีตัวเลขคอลัมน์รหัสพัสดุครุภัณฑ์ในตารางขอยืม
-        const matchedEq = state.equipments.find(e => String(e[0]) === eqId); // จับคู่กับรหัสพัสดุในคลังหลัก
+        // ดึงรหัสพัสดุจากตารางยืม: รองรับทั้ง r.EquipmentID และ r[5]
+        const borrowEqId = String(r.EquipmentID || r[5]).trim();
+        
+        // ค้นหาเพื่อจับคู่ชื่อกลุ่มในคลังครุภัณฑ์หลัก
+        const matchedEq = state.equipments.find(e => {
+            const mainEqId = String(e.EquipmentID || e[0]).trim();
+            return mainEqId === borrowEqId;
+        });
+        
         if (matchedEq) {
-            const name = matchedEq[1] ? String(matchedEq[1]).trim() : 'อุปกรณ์ทั่วไป';
+            let name = matchedEq.EquipmentName || matchedEq[1];
+            name = name ? String(name).trim() : 'อุปกรณ์ทั่วไป';
             if (groups[name]) {
                 groups[name].borrowed++;
             }
         }
     });
     
-    // 3. ประมวลผลลบยอดคงเหลือสุทธิ (ยอดรวมคลัง - ยอดที่ถูกขอยืมไปใช้งาน)
+    // 4. ประมวลผลลบหักยอดคงเหลือสุทธิ (ยอดรวมคลัง - ยอดการยืมจริง)
     for (let name in groups) {
         groups[name].available = groups[name].total - groups[name].borrowed;
     }
@@ -181,7 +196,7 @@ function renderEquipmentTypeGrid() {
         return;
     }
     
-    // 4. เรนเดอร์สร้างกล่องการ์ดสถิติโทนสีพาสเทลแยกตามหมวดหมู่ประเภทการยืม
+    // 5. เรนเดอร์สร้างกล่องการ์ดพาสเทลแยกตามหมวดหมู่อย่างสวยงาม
     for (let name in groups) {
         let icon = 'fa-kit-medical';
         let colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700';
@@ -203,7 +218,7 @@ function renderEquipmentTypeGrid() {
             icon = 'fa-lungs';
             colorTheme = 'bg-sky-50/70 border-sky-100/60 text-sky-700';
             iconBg = 'text-sky-500';
-        } else if (name.includes('วอคเกอร์') || name.includes('ไม้ค้ำ')) {
+        } else if (name.includes('วอคเกอร์') || name.includes('ไม้ค้ำ') || name.includes('ไม้เท้า')) {
             icon = 'fa-crutches';
             colorTheme = 'bg-purple-50/70 border-purple-100/60 text-purple-700';
             iconBg = 'text-purple-500';
