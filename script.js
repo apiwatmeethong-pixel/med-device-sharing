@@ -5,8 +5,8 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
 
-// 🟢 แก้ไขบั๊กเครื่องหมายชนกันด้วยการใช้ Backtick (``) ครอบ SVG แทน
-const DEFAULT_LOGO = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>`;
+// 🟢 เวอร์ชันแก้ไขบั๊กเครื่องหมาย: ใช้เครื่องหมายคำพูดคู่ครอบ และด้านในเป็นเครื่องหมายเดี่ยว ปลอดภัย 100%
+const DEFAULT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' rx='30' fill='%23e0e7ff'/><circle cx='60' cy='60' r='40' fill='%234f46e5'/><path d='M60 42v36M42 60h36' stroke='white' stroke-width='10' stroke-linecap='round'/></svg>";
 
 let state = {
     isAdmin: false,
@@ -286,7 +286,6 @@ function renderAdminBorrowContainer() {
     html += `</tbody></table>`;
     wrapper.innerHTML = html;
 
-    // เรนเดอร์ปุ่มสลับหน้าถัดไป/ย้อนกลับ
     const paginationBox = document.getElementById('admin-table-pagination');
     if (paginationBox) {
         paginationBox.innerHTML = `
@@ -310,7 +309,7 @@ function printLoanReceipt(entryId) {
     const dateFormatted = bDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
     
     const dDate = new Date(bDate);
-    dDate.setMonth(dDate.getMonth() + 6); // สัญญาสิ้นสุดค่ามัดจำเมื่อครบ 6 เดือน
+    dDate.setMonth(dDate.getMonth() + 6);
     const endDateFormatted = dDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const eqId = row.EquipmentID || row[5];
@@ -333,7 +332,6 @@ function printLoanReceipt(entryId) {
     document.getElementById('print-relation').innerText = row.Relationship || row[14] || 'ตนเอง';
     document.getElementById('print-deposit').innerText = row.Deposit || row[15] || '0';
 
-    // ยิงคำสั่งปริ้นท์ของตัวเบราว์เซอร์
     window.print();
 }
 
