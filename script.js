@@ -5,8 +5,8 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
 
-// 🟢 เวอร์ชันแก้ไขบั๊กถาวร: แปลง SVG เป็นรหัส Base64 ป้องกันเครื่องหมายและตัวเลขชนกับระบบโครงสร้างเว็บ 100%
-const DEFAULT_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIzMCIgZmlsbD0iI2UwZTdmZiIvPjxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjQwIiBmaWxsPSIjNGY0NmU1Ii8+PHBhdGggZD0iTTYwIDQydjM2TTQyIDYwaDM2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=";
+// 🟢 ปลอดภัยสูงสุด: แปลง SVG เป็นรหัส Base64 ป้องกันเครื่องหมายคำพูดกวนระบบโครงสร้างหน้าเว็บ
+const DEFAULT_LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIzMCIgZmlsbD0iI2UwZTdmZiIvPjxjaXJjbGUgY3g9IjYwIiBjeT0iZG93biIgY3k9IjYwIiByQ29udGVudD0iNDAiIGZpbGw9IiM0ZjQ2ZTViIi8+PHBhdGggZD0iTTYwIDQydjM2TTQyIDYwaDM2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=";
 
 let state = {
     isAdmin: false,
@@ -46,11 +46,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('borrow-date').valueAsDate = new Date();
 });
 
+// 🟢 แก้ไขจุดบกพร่อง: เพิ่มการถอดคลาสพาร์ทเมนูซ้ายมือ (Sidebar) ให้เปิดแสดงผลทันทีหลังตรวจสอบ Token สำเร็จ
 function checkAuthSession() {
     if (localStorage.getItem('adminToken')) {
         state.isAdmin = true;
         state.adminId = localStorage.getItem('adminId');
         state.adminName = localStorage.getItem('adminName');
+        
+        // ดึงอิลิเมนต์รากของหน้าเมนูควบคุมจัดส่งข้อมูล[cite: 7]
+        const sidebar = document.getElementById('sidebar');
+        const wrapper = document.getElementById('main-wrapper');
+        
+        if (sidebar && wrapper) {
+            sidebar.classList.remove('hidden'); // 👈 ถอดคลาสซ่อน เพื่อเปิดใช้เมนูซ้ายมือตัวจริง[cite: 7]
+            wrapper.classList.add('md:pl-64');   // 👈 ดันเนื้อหาขวาไปหลบแถบเมนู[cite: 7]
+        }
         
         document.getElementById('btn-login-trigger').classList.add('hidden');
         document.getElementById('logged-admin-info').classList.remove('hidden');
@@ -102,8 +112,10 @@ function applySystemConfiguration() {
     }
 
     document.getElementById('nav-logo').src = logoUrl;
+    document.getElementById('side-logo').src = logoUrl;
     document.getElementById('nav-title').innerText = title1;
     document.getElementById('nav-subtitle').innerText = title2;
+    document.getElementById('side-agency-title').innerText = title1;
 }
 
 function renderDashboardStats() {
@@ -159,6 +171,7 @@ function renderEquipmentTypeGrid() {
         else if (name.includes('ที่นอน')) { icon = 'fa-wind'; colorTheme = 'bg-teal-50/70 border-teal-100/60 text-teal-700'; iconBg = 'text-teal-500'; }
         else if (name.includes('รถเข็น') || name.includes('รถนอน')) { icon = 'fa-wheelchair'; colorTheme = 'bg-amber-50/70 border-amber-100/60 text-amber-700'; iconBg = 'text-amber-500'; }
         else if (name.includes('ออกซิเจน')) { icon = 'fa-lungs'; colorTheme = 'bg-sky-50/70 border-sky-100/60 text-sky-700'; iconBg = 'text-sky-500'; }
+        else if (name.includes('วอคเกอร์') || name.includes('ไม้ค้ำ')) { icon = 'fa-crutches'; colorTheme = 'bg-purple-50/70 border-purple-100/60 text-purple-700'; iconBg = 'text-purple-500'; }
         
         const g = groups[name];
         const card = document.createElement('div');
@@ -274,7 +287,7 @@ function renderAdminBorrowContainer() {
                     <td class="p-3">${badge}</td>
                     <td class="p-3 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick="printLoanReceipt('${entryId}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg transition" title="พิมพ์ใบยืมตาม PDF"><i class="fa-solid fa-print text-xs"></i> พิมพ์ใบยืม</button>
+                            <button onclick="printLoanReceipt('${entryId}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1.5 rounded-lg transition" title="พิมพ์ใบยืมตาม PDF"><i class="fa-solid fa-print text-xs"></i> พิมพ์ใบยืม</button>
                             ${(status === 'Borrowed' || status === 'ยืม') ? `<button onclick="processReturnItem('${entryId}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 px-2 py-1 rounded-lg font-bold">รับคืน</button>` : ''}
                         </div>
                     </td>
@@ -301,6 +314,22 @@ function changeAdminPage(target) {
     renderAdminBorrowContainer();
 }
 
+// 🟢 ฟังก์ชันผูกแท็บย้ายหน้าจอไปพาร์ทเมนูซ้ายมือ (Sidebar Switch Tab)
+function switchTab(tabId) {
+    state.currentTab = tabId;
+    const views = document.querySelectorAll('.app-view');
+    views.forEach(v => v.classList.add('hidden'));
+    
+    const targetView = document.getElementById(`sec-${tabId}`);
+    if (targetView) targetView.classList.remove('hidden');
+    
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(m => m.classList.remove('active'));
+    
+    const targetMenu = document.getElementById(`btn-menu-${tabId}`);
+    if (targetMenu) targetMenu.classList.add('active');
+}
+
 function printLoanReceipt(entryId) {
     const row = state.data.find(r => (r.EntryID || r[0]) === entryId);
     if (!row) return;
@@ -317,7 +346,8 @@ function printLoanReceipt(entryId) {
     const agencyText = state.publics.find(item => item['ประเภท'] === 'Agency' || item[0] === 'Agency');
 
     if (agencyText) {
-        document.getElementById('print-agency-name').innerText = agencyText['ข้อมูล 2'] || agencyText[2] || 'เทศบาลเมืองเขลางค์นคร';
+        document.getElementById('print-header-agency').innerText = agencyText['ข้อมูล 1'] || agencyText[1] || 'เทศบาลเมืองเขลางค์นคร';
+        document.getElementById('print-agency-name').innerText = agencyText['ข้อมูล 2'] || agencyText[2] || 'งานบริการศูนย์กายอุปกรณ์ทางการแพทย์สาธารณสุข';
     }
 
     document.getElementById('print-borrower').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
