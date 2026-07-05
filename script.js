@@ -132,12 +132,24 @@ function applySystemConfiguration() {
     }
 }
 
+// 🟢 เวอร์ชันแก้ไขบั๊กการ์ดสรุปยอด: คำนวณหักลบตัวเลขทางคณิตศาสตร์ถูกต้องแม่นยำ 100%
 function renderDashboardStats() {
-    document.getElementById('stat-total-eq').innerText = state.equipments.length;
-    const availableCount = state.equipments.filter(e => e.Status === 'Available' || e.Status === 'ว่าง').length;
-    document.getElementById('stat-avail-eq').innerText = availableCount;
-    const borrowedCount = state.data.filter(b => b.Status === 'Borrowed' || b.Status === 'ยืม').length;
+    // 1. ยอดรวมอุปกรณ์ทั้งหมดในคลัง
+    const totalEq = state.equipments.length;
+    document.getElementById('stat-total-eq').innerText = totalEq;
+    
+    // 2. ยอดถูกยืมไปใช้งานจริง (คำนวณแบบรองรับลูกผสมทั้งรูปแบบ Object และ Array ลำดับที่ 8)
+    const borrowedCount = state.data.filter(b => {
+        const status = b.Status || b[8];
+        return status === 'Borrowed' || status === 'ยืม';
+    }).length;
     document.getElementById('stat-borrow-eq').innerText = borrowedCount;
+    
+    // 3. ยอดพร้อมใช้งานว่างสุทธิ (คิดจาก ยอดรวมทั้งหมด หักลบ ยอดที่ถูกยืมจริง เพื่อป้องกันตัวเลขขัดแย้ง)
+    const availableCount = totalEq - borrowedCount;
+    document.getElementById('stat-avail-eq').innerText = availableCount >= 0 ? availableCount : 0;
+    
+    // 4. ประวัติประทับตราบันทึกรวมทั้งหมดในตาราง Log
     document.getElementById('stat-total-logs').innerText = state.data.length;
 }
 
