@@ -16,7 +16,10 @@ let state = {
     equipments: [], 
     currentTab: 'dashboard'
 };
-
+// ตัวแปรควบคุมระบบการแบ่งหน้าแสดงผลทั้ง 3 ส่วนหลัก (หน้าละ 20 แถว)
+let publicCurrentPage = 1;
+let equipCurrentPage = 1;
+const rowsPerPageLimit = 20; // ล็อกเป้าหมายการแสดงผลไว้ที่หน้าละ 20 แถวถ้วนตามกำหนด
 // ตัวแปรควบคุมระบบการแบ่งหน้าแสดงผลพาร์ทแอดมิน (Pagination States)
 let adminCurrentPage = 1;
 const adminPageLimit = 10; // แสดงผลแถวข้อมูลรายการยืมเพจละ 10 รายการ
