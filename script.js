@@ -6,9 +6,10 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
 
 const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx='60' cy='60' r='40' fill='%234f46e5'/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
+
     console.log("ระบบคลังสารสนเทศภูมิศาสตร์และแบบฟอร์มใบยืมศูนย์กายอุปกรณ์ v2.2 เริ่มทำงาน...");
 
-    // 📁 กล่องข้อมูลสภาวะระบบหลัก (Global State Management Architecture)
+    // 📁 กล่องจัดการสภาวะระบบแปรหลัก (Global State Management Framework)
     let state = { 
         isAdmin: false, 
         adminId: '', 
@@ -18,17 +19,17 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         equipments: [], 
         filteredData: [],
         page: 1, 
-        limit: 15, // กำหนดคุมจำกัดยอดแสดงผลสูงสุดที่หน้าละ 15 แถวรายการป้องกันหน้าระเบิด
+        limit: 15, // จำกัดจำนวนแสดงผลหน้าละ 15 รายการคุมตารางไม่ให้ล้นจอ
         tab: 'all', 
         searchKeyword: '',
         editingId: null 
     };
 
-    // ตัวแปรแกนหมุนของแผนที่ภูมิสารสนเทศ Leaflet Maps
+    // ตัวแปรแกนสำหรับคุมระบบชั้นแผนที่สารสนเทศ Leaflet Maps
     let mapInstance = null;
     let markerGroup = null;
 
-    // 🟢 ตัวสั่งยิงติดต่อฝั่งเซิร์ฟเวอร์หลังบ้านผ่าน Native google.script.run ของระบบเดิมคุณ 100%
+    // 🟢 ตัวสั่งยิงติดต่อฝั่งเซิร์ฟเวอร์หลังบ้านผ่าน Native google.script.run โครงสร้างดั้งเดิมของโปรเจกต์คุณ
     function run(action, payload = {}) {
         return new Promise((resolve, reject) => {
             if (localStorage.getItem('adminToken')) {
@@ -38,45 +39,45 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
                 .withSuccessHandler(res => { 
                     if (res && res.needLogin) { 
                         logout(); 
-                        resolve({ success: false, error: 'สิทธิ์ล็อกอินหมดอายุกรุณาเข้าระบบใหม่' }); 
+                        resolve({ success: false, error: 'หมดอายุสิทธิ์ล็อกอิน กรุณาเข้าสู่ระบบใหม่อีกครั้ง' }); 
                     } else { 
                         resolve(res); 
                     } 
                 })
                 .withFailureHandler(err => {
-                    console.error("ระบบ GAS เซิร์ฟเวอร์ขัดข้อง:", err);
+                    console.error("ระบบ GAS ทางฝั่งเซิร์ฟเวอร์หลังบ้านเกิดข้อผิดพลาด:", err);
                     reject(err);
                 })
                 .clientHandler(action, payload);
         });
     }
 
-    // 🎬 สตาร์ทโหลดระบบงานทันทีเมื่อบราวเซอร์จัดเตรียมหน้าจอเสร็จสิ้น
+    // 🎬 สตาร์ทโหลดระบบงานทันทีเมื่อหน้าเว็บไซต์ DOM ถูกจัดเตรียมเสร็จสิ้น
     document.addEventListener('DOMContentLoaded', async () => {
-        // แกะตัวแปร Session ตรวจสอบสถานะการล็อกอินเดิมจาก LocalStorage
+        // แกะตัวแปรเช็คสถานะ Session ล็อกอินแอดมินเดิมจากความจำบราวเซอร์
         if (localStorage.getItem('adminToken')) { 
             state.isAdmin = true; 
             state.adminId = localStorage.getItem('adminId') || ''; 
             state.adminName = localStorage.getItem('adminName') || state.adminId; 
         }
         
-        // รันคำสั่งเปลี่ยนสถานะซ่อน/แสดงของหน้าฟอร์มฝั่งซ้ายมือทันที
+        // รันคำสั่งตรวจสิทธิ์เพื่อสลับหน้าฟอร์มกรอกและกล่อง Welcome ฝั่งซ้ายมือทันที
         updateAuth(); 
         
-        // ขึ้นโครงฐานแผนที่ Leaflet รอบันทึกพิกัดผู้รับบริการ
+        // รันโครงแผนที่สารสนเทศรอบัดกรีปักหมุดบ้านพิกัดเคสผู้ป่วย
         initMap();
 
-        // รันคำสั่งคิวรี่ดึงฐานข้อมูลหลักจากชีตเซิร์ฟเวอร์
+        // รันคำสั่งดึงซิงค์คิวรี่ฐานข้อมูลหลักย่อย 3 แผ่นชีต
         await loadData();
 
-        // ตั้งเวลาหน้าฟอร์มวันที่ให้จับค่าวันปัจจุบันเป็นค่า Default ต้นทาง
+        // ล็อกเวลาหน้าช่องบันทึกฟอร์มวันที่ให้จับค่า ณ วันปัจจุบันไว้เป็นค่า Default
         const dateInput = document.getElementById('form-borrow-date');
         if (dateInput) {
             dateInput.valueAsDate = new Date();
         }
     });
 
-    // 📥 ฟังก์ชันรวมกลุ่มประมวลผลซิงค์ข้อมูลชีต 3 แผ่นเข้ามาใน State ระบบหลัก
+    // 📥 ฟังก์ชันซิงค์ประมวลผลดึงฐานข้อมูลชีต 3 แผ่นเข้ามาฝากใน State
     async function loadData() {
         try {
             const [log, pub, eq] = await Promise.all([
@@ -93,13 +94,13 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
             calculateStats();
             populateFormDropdowns();
             renderFilteredTable();
-            updateMapMarkers(); // พล็อตหมุดสารสนเทศพิกัดบ้านผู้ป่วยลงบนแผนที่โดยอัตโนมัติ
+            updateMapMarkers(); // สั่งรันคำสั่งแกะพิกัดปักหมุดผู้รับบริการลงแผนที่อัตโนมัติ
         } catch (e) {
-            console.error("ข้อผิดพลาดในการโหลดข้อมูลสัญญารวม:", e);
+            console.error("โหลดข้อมูลจากฐานข้อมูลชีตไม่สำเร็จ:", e);
         }
     }
 
-    // 🔒 ฟังก์ชันคุมสิทธิ์เปิด-ปิดฟอร์มฝั่งซ้ายมือสไตล์พรีเมียม (Auth Layout Handler) ของเดิมคุณ 100%
+    // 🔒 ฟังก์ชันสลับการมองเห็น Layout ฝั่งซ้ายมือ คุมฟอร์มบันทึกสัญญาตามระบบดั้งเดิมของคุณ 100%
     function updateAuth() {
         const borrowFormBlock = document.getElementById('borrow-form-block');
         const guestWelcomeBlock = document.getElementById('guest-welcome-block');
@@ -109,7 +110,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         const btnLoginShow = document.getElementById('btn-login-show');
 
         if (state.isAdmin) {
-            // หาก Admin เข้าสู่ระบบสำเร็จ -> ซ่อนกล่องยินดีต้อนรับผู้ใช้ทั่วไป แล้วเปิดฟอร์มสัญญายืมฝั่งซ้ายมือทันที
+            // กรณีสิทธิ์แอดมินผ่าน -> สั่งซ่อนการ์ดต้อนรับผู้ใช้ทั่วไป แล้วเปิดแบบฟอร์มบันทึกการยืมฝั่งซ้ายมือให้ใช้งานทันที
             if (borrowFormBlock) borrowFormBlock.classList.remove('hidden');
             if (guestWelcomeBlock) guestWelcomeBlock.classList.add('hidden');
             if (btnAdminEquip) btnAdminEquip.classList.remove('hidden');
@@ -121,7 +122,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
             }
             if (btnLoginShow) btnLoginShow.classList.add('hidden');
         } else {
-            // หากผู้เข้าชมทั่วไปเข้าสู่ระบบ -> ซ่อนฟอร์มสัญญายืมฝั่งซ้ายมือ และดึงเอาการ์ดต้อนรับประชาชนทั่วไปขึ้นมาล็อกแทน
+            // กรณีประชาชนผู้เยี่ยมชมทั่วไป -> ซ่อนฟอร์มควบคุมสัญญายืมด้านซ้ายออกไป และสไลด์การ์ดต้อนรับประชาชนขึ้นมาล็อกแทน
             if (borrowFormBlock) borrowFormBlock.classList.add('hidden');
             if (guestWelcomeBlock) guestWelcomeBlock.classList.remove('hidden');
             if (btnAdminEquip) btnAdminEquip.classList.add('hidden');
@@ -131,7 +132,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         }
     }
 
-    // ⚙️ นำชื่อสังกัดและหัวเว็บจากชีต Publics ของคุณมาสลักลงบน Navbar และพาร์ทใบพิมพ์
+    // ⚙️ ฟังก์ชันนำชื่อหน่วยงานหรือสังกัดจากชีต Publics ของคุณมาแปะลงหัวเว็บบาร์ Navbar และพาร์ทใบพิมพ์
     function applyConfig() {
         let agency1 = "ระบบบริหารจัดการ ยืมคืนอุปกรณ์การแพทย์";
         let agency2 = "เทศบาลเมืองเขลางค์นคร";
@@ -149,7 +150,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         if (printAgency) printAgency.innerText = agency2;
     }
 
-    // 📊 ฟังก์ชันคำนวณสถิติจำนวนรวม เพื่อนำไปประจุลงการ์ดแดชบอร์ด 4 ใบด้านบนแบบเรียลไทม์
+    // 📊 ฟังก์ชันคำนวณสรุปสถิติจำนวน เพื่อนำไปประจุลงแผ่นการ์ดสถิติ 4 ใบด้านบน
     function calculateStats() {
         const total = state.equipments.length;
         const borrowed = state.data.filter(b => (b.Status || b[8]) === 'Borrowed' || (b.Status || b[8]) === 'ยืม').length;
@@ -166,7 +167,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         if (lCard) lCard.innerText = `${state.data.length} ครั้ง`;
     }
 
-    // 📥 หยอดข้อมูลชิ้นพัสดุกับรายชื่อกลุ่มเขตชุมชนหมู่บ้านใส่ลงฟิลด์เลือกดรอปดาวน์ฟอร์มขอยืม
+    // 📥 จัดวางรายละเอียดรายชื่อพัสดุกับกลุ่มหมู่บ้านชุมชนหยอดใส่ลงช่องดรอปดาวน์ฟอร์มขอยืมอุปกรณ์
     function populateFormDropdowns() {
         const selectEq = document.getElementById('form-equipment-id');
         if (selectEq) {
@@ -193,10 +194,10 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         }
     }
 
-    // 🎚️ ฟังก์ชันประมวลผลเมื่อกดคลิกเลือกสลับแท็บสถานะข้อมูลตาราง (ทั้งหมด / กำลังยืม / คืนแล้ว)
+    // 🎚️ ฟังก์ชันประมวลผลการกรองตารางเมื่อผู้ใช้งานกดคลิกเลือกสลับแท็บสเตตัส (ทั้งหมด / กำลังยืม / คืนแล้ว)
     function switchStatusTab(status) {
         state.tab = status;
-        state.page = 1; // ดีดหน้ากลับไปตั้งต้นหน้า 1 เสมอทุกครั้งที่สั่งกรองข้อมูลใหม่
+        state.page = 1; // ดีดตัวเลขหน้าเพจตารางสลับกลับมาเริ่มต้นหน้า 1 ทุกครั้งที่กดกรองสลับกลุ่ม
         
         const tabs = document.querySelectorAll('#status-tab-group button');
         tabs.forEach(t => {
@@ -211,7 +212,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         renderFilteredTable();
     }
 
-    // 🔍 ฟังก์ชันรับคำสืบค้นใน Search Input ช่องสืบค้นเพื่อทำการ Filter ตารางเรียลไทม์
+    // 🔍 ฟังก์ชันดักจับข้อความในช่องค้นหา เพื่อทำการคัดกรองข้อมูลประวัติตารางเรียลไทม์
     function handleSearch() {
         const searchBox = document.getElementById('table-search-input');
         state.searchKeyword = (searchBox.value || '').toLowerCase().trim();
@@ -219,13 +220,13 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         renderFilteredTable();
     }
 
-    // 🟢 โครงข่ายคัดกรองข้อมูลผสานระบบแบ่งหน้าตารางแบบอัตโนมัติ (Search, Filter, Pagination Logic Middleware)
+    // 🟢 โครงข่ายกลไกการคัดกรองผสานระบบแบ่งกรอบหน้าเพจตาราง (Search, Filter, Pagination Logic) กันข้อมูลทะลุจอ
     function renderFilteredTable() {
         const tbody = document.getElementById('borrow-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        // ทำการคัดกรองแถวข้อมูลจากฐานข้อมูลแผ่นชีตตามเงื่อนไขแท็บและคำค้นหาหน้างาน
+        // ทำการ Filter แถวเรคคอร์ดข้อมูลจากแผ่นชีตตามเงื่อนไขค้นหาและกลุ่มสเตตัสแท็บ
         state.filteredData = state.data.filter(item => {
             const statusRaw = item.Status || item[8] || '';
             const patient = (item.PatientName || item[13] || '').toLowerCase();
@@ -254,13 +255,13 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         const controlsContainer = document.getElementById('pagination-controls');
 
         if (paginatedItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">❌ ไม่พบประวัติข้อมูลสัญญาใดๆ ตามเงื่อนไขที่ระบุ</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">❌ ไม่พบประวัติข้อมูลสัญญาใดๆ ตามเงื่อนไขค้นหาของคุณ</td></tr>`;
             if (pageInfoLabel) pageInfoLabel.innerText = "รายการที่ 0-0 จากทั้งหมด 0 รายการ";
             if (controlsContainer) controlsContainer.innerHTML = '';
             return;
         }
 
-        // เริ่มต้นเรนเดอร์จัดวางรายการข้อมูลลงบนโครงแถวตาราง HTML DOM
+        // ประกอบร่างแถวตารางและปุ่มเครื่องมือย่อยลงบนตาราง DOM ของหน้าหลัก
         paginatedItems.forEach(item => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50/50 transition-colors border-b border-slate-100";
@@ -277,7 +278,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
                 `<span class="px-2 py-0.5 font-bold text-[10px] rounded-full bg-rose-50 text-rose-700 border border-rose-100">กำลังยืม</span>` :
                 `<span class="px-2 py-0.5 font-bold text-[10px] rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">คืนแล้ว</span>`;
 
-            // จัดชุดคำสั่งสร้างปุ่มพิมพ์ใบยืมสัญญาทางการ และปุ่มตัดยอดรับของคืนเข้าคลังสินค้า
+            // ผูกฟังก์ชันปุ่มกดพิมพ์ใบสัญญาทางการ และปุ่มตัดยอดรับของคืนสต็อกคลังสำหรับ Admin
             let actionButtons = `<button onclick="printOfficialReceipt('${entryId}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-1 rounded-lg text-xs font-semibold mr-1 transition-colors"><i class="fa-solid fa-print"></i> พิมพ์ใบยืม</button>`;
             
             if (state.isAdmin && (statusRaw === 'Borrowed' || statusRaw === 'ยืม')) {
@@ -301,7 +302,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
             pageInfoLabel.innerText = `รายการที่ ${startIdx + 1}-${Math.min(startIdx + state.limit, totalItems)} จากทั้งหมด ${totalItems} รายการ (หน้า ${state.page} / ${totalPages})`;
         }
 
-        // บรรจุกลุ่มปุ่มสลับหมายเลขหน้าเพจข้อมูลตารางลงปลายทาง
+        // วาดรูปชุดปุ่มสลับหมายเลขหน้าตาราง (◀ ย้อนกลับ หน้าปัจจุบัน ถัดไป ▶)
         if (controlsContainer) {
             controlsContainer.innerHTML = `
                 <button onclick="changePage(${state.page - 1})" ${state.page === 1 ? 'disabled class="text-slate-300 cursor-not-allowed px-1.5"' : 'class="text-blue-600 hover:bg-slate-100 px-1.5 rounded"'}>◀ ย้อนกลับ</button>
@@ -316,12 +317,12 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         renderFilteredTable();
     }
 
-    // 🗺️ ฟังก์ชันขึ้นโครงร่างตั้งค่าแผนที่ภูมิสารสนเทศพิกัด Leaflet Maps ดั้งเดิมของระบบ
+    // 🗺️ ฟังก์ชันปั้นโครงสร้างระบบสารสนเทศชั้นแผนที่ภูมิศาสตร์จุดปักหมุด Leaflet Maps
     function initMap() {
         const mapContainer = document.getElementById('map');
         if (!mapContainer) return;
 
-        // ล็อกจุดศูนย์กลางแผนที่สารสนเทศไว้ที่พิกัดพิกบล็อกเขตอำเภอเกาะคา / ลำปาง
+        // ล็อกจุดศูนย์กลางแผนที่สารสนเทศไว้ที่พิกัดพิกบล็อกเขตอำเภอเกาะคา ลำปาง เป็นค่าหลักต้นทาง
         mapInstance = L.map('map', { scrollWheelZoom: false }).setView([18.235, 99.415], 11);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -331,16 +332,16 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         markerGroup = L.layerGroup().addTo(mapInstance);
     }
 
-    // 🟢 ดึงข้อมูลพิกัด GPS จากฐานข้อมูลชีตมาแยกชุดข้อมูล แล้วปักหมุดบ้านผู้ป่วยที่กำลังขอยืมอุปกรณ์อยู่
+    // 🟢 แกะพิกัด GPS จากฐานข้อมูลมาปักหมุดรายงานตำแหน่งบ้านผู้ป่วยที่กำลังขอยืมครุภัณฑ์อยู่จริงบนแผนที่
     function updateMapMarkers() {
         if (!markerGroup || !mapInstance) return;
-        markerGroup.clearLayers(); // ล้างหมุดพิกัดเดิมออกทั้งหมดเตรียมรอการอัปเดตสเตตัสรอบใหม่
+        markerGroup.clearLayers(); // ล้างเคลียร์หมุดชั้นเดิมออกเพื่ออัปเดตตำแหน่งสดใหม่ล่าสุด
 
         state.data.forEach(item => {
             const statusRaw = item.Status || item[8];
             const gpsText = item.GPS || item[16] || ''; 
 
-            // กรองทำรายการพล็อตหมุดเฉพาะผู้ป่วยที่ "อยู่ระหว่างการกู้ยืม" และมีการป้อนข้อมูลพิกัดละติจูด-ลองจิจูด
+            // ปักหมุดเฉพาะเคสสัญญากู้ยืมที่ "อยู่ระหว่างการยืม" และมีการป้อนข้อมูลพิกัดดาวเทียมแผนที่
             if (((statusRaw === 'Borrowed' || statusRaw === 'ยืม')) && gpsText.includes(',')) {
                 const coordinates = gpsText.split(',');
                 const lat = parseFloat(coordinates[0]);
@@ -352,7 +353,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
                     const communityArea = item.Community || item[4] || '-';
                     const contactPhone = item.Phone || item[12] || '-';
 
-                    // ประกอบฟอร์แมตข้อความขึ้นกล่องหน้าต่าง Tooltip บอลลูนเมื่อคลิกหมุด (Leaflet Infowindow Popup)
+                    // บรรจุและร้อยเรียงเลย์เอาต์ข้อความขึ้นกล่อง Tooltip หน้าต่างแผนที่ (Leaflet Popup Window)
                     const tooltipContent = `
                         <div class="text-xs font-sans p-1" style="line-height:1.5;">
                             <div class="font-bold text-blue-700 text-sm mb-1"><i class="fa-solid fa-user-injured mr-1"></i>${patientName}</div>
@@ -368,7 +369,7 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         });
     }
 
-    // 📄 ฟังก์ชันแกะข้อมูลแถวสัญญายืม เพื่อประจุค่าส่งพิมพ์ตัวกระดาษแบบฟอร์มตรงตามไฟล์ PDF เทศบาลเขลางค์นคร 100%
+    // 📄 ฟังก์ชันคัดแยกข้อมูลแถวสัญญาขอยืม เพื่อส่งค่านำพิมพ์ออกกระดาษตรงตาม PDF เทศบาลเขลางค์นคร 100%
     function printOfficialReceipt(entryId) {
         const row = state.data.find(r => (r.EntryID || r[0]) === entryId);
         if (!row) return;
@@ -377,14 +378,14 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         const dateFormatted = borrowDateRaw.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         
         const returnDeadlineDate = new Date(borrowDateRaw);
-        returnDeadlineDate.setMonth(returnDeadlineDate.getMonth() + 6); // ล็อกสัญญาคำนวณวันสิ้นสุดการริบเงินมัดจำครบรอบอายุ 6 เดือนพอดี
+        returnDeadlineDate.setMonth(returnDeadlineDate.getMonth() + 6); // สัญญาสิ้นสุดประกันการคืนเงินมัดจำเมื่ออายุการขอยืมยาวเกิน 6 เดือนพอดี
         const endDateFormatted = returnDeadlineDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
         const eqId = row.EquipmentID || row[5];
         const matchedEq = state.equipments.find(e => String(e.EquipmentID || e[0]).trim() === String(eqId).trim());
         const displayEquipmentText = matchedEq ? `${matchedEq[1] || matchedEq.EquipmentName} [รหัส: ${matchedEq[0] || matchedEq.EquipmentID}] (S/N: ${matchedEq[2] || matchedEq.SerialNumber})` : eqId;
 
-        // จับคู่อักษรวิ่งไปแมปลงบนแผ่นพิมพ์ใบสัญญากู้ยืมตัวจริงฝั่ง HTML
+        // ร้อยข้อมูลข้อความวิ่งไปสลักลงบนแผ่นพิมพ์ใบสำคัญสัญญากู้ยืมฝั่ง HTML
         document.getElementById('print-borrower-name').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
         document.getElementById('print-sign-name').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
         document.getElementById('print-receipt-date').innerText = dateFormatted;
@@ -397,32 +398,32 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         document.getElementById('print-patient-relation').innerText = row.Relationship || row[14] || 'ตนเอง';
         document.getElementById('print-equipment-deposit').innerText = row.Deposit || row[15] || '0';
 
-        // ปล่อยกลไกยิงคำสั่งพิมพ์ออกพริ้นเตอร์ของเบราว์เซอร์หน้างาน
+        // ปล่อยกลไกคำสั่งยิงพิมพ์ออกพริ้นเตอร์ของบราวเซอร์ตัวจริงทันที
         window.print();
     }
 
-    // 📡 ดึงข้อมูลพิกัดละติจูด-ลองจิจูดจากอุปกรณ์เคลื่อนที่ผ่านเครือข่ายดาวเทียม (HTML5 Geolocation Tracking API)
+    // 📡 ดึงข้อมูลค่าพิกัดพิกัดตำแหน่งจากโทรศัพท์ผ่านเสาสัญญาณดาวเทียมเครือข่าย (HTML5 Geolocation API Layer)
     function getCurrentLocation() {
         if (!navigator.geolocation) { 
-            Swal.fire('ระบบไม่รองรับ', 'เครื่องคอมพิวเตอร์หรืออุปกรณ์ของท่านไม่สนับสนุนระบบระบุตำแหน่งพิกัดพิกัดตำแหน่ง', 'error'); 
+            Swal.fire('ระบบไม่รองรับ', 'เครื่องของท่านไม่สนับสนุนระบบเรียกพิกัดแผนที่ระบุตำแหน่งภูมิศาสตร์', 'error'); 
             return; 
         }
-        Swal.fire({ title: 'กำลังดึงพิกัดสัญญาณดาวเทียม...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        Swal.fire({ title: 'กำลังดึงพิกัดดาวเทียมหน้างาน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
         navigator.geolocation.getCurrentPosition((pos) => {
             const gpsField = document.getElementById('form-gps');
             if (gpsField) {
                 gpsField.value = `${pos.coords.latitude}, ${pos.coords.longitude}`;
             }
-            Swal.fire('สำเร็จ', 'บันทึกค่าพิกัดพิกัดสารสนเทศหน้างานเรียบร้อย', 'success');
+            Swal.fire('สำเร็จ', 'ผนึกค่าพิกัดพิกัดละติจูด ลองจิจูด หน้างานเรียบร้อย', 'success');
         }, () => { 
-            Swal.fire('พิกัดล้มเหลว', 'ไม่สามารถเชื่อมต่อระบบรับสัญญาณดาวเทียมได้ กรุณาเปิดระบบระบุตำแหน่งพิกัดบนเครื่องก่อนใช้งาน', 'error'); 
+            Swal.fire('พิกัดล้มเหลว', 'ไม่สามารถเกาะสัญญาณดาวเทียมพิกัดได้ กรุณาเปิด Location Service บนอุปกรณ์ของท่านก่อนกดเรียกพิกัด', 'error'); 
         }, { enableHighAccuracy: true });
     }
 
-    // 💾 ฟังก์ชันส่งแบบฟอร์มสัญญายืมเรื่องใหม่ส่งขึ้นไปบันทึกลงแผ่นชีตฐานข้อมูลหลังบ้าน
+    // 💾 ฟังก์ชันปั้นโครงสร้าง Payload ส่งแบบฟอร์มสัญญายืมขอยืมใหม่ขึ้นไปเซฟบนฐานข้อมูลชีตหลังบ้าน
     async function submitBorrowForm(event) {
         event.preventDefault();
-        Swal.fire({ title: 'กำลังบันทึกสัญญายืม...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        Swal.fire({ title: 'กำลังส่งเรื่องบันทึกสัญญายืม...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
         const payload = {
             EquipmentID: document.getElementById('form-equipment-id').value,
@@ -443,46 +444,46 @@ const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000
         try {
             const res = await run('addBorrow', payload);
             if (res && res.success) {
-                Swal.fire('สำเร็จ', 'บันทึกเอกสารใบสัญญายืมและตัดสต็อกพัสดุในคลังเรียบร้อย', 'success');
+                Swal.fire('สำเร็จ', 'บันทึกเอกสารสัญญายืมและตัดยอดพัสดุครุภัณฑ์เรียบร้อย', 'success');
                 document.getElementById('borrow-form').reset();
                 document.getElementById('form-borrow-date').valueAsDate = new Date();
                 await loadData();
             } else {
-                Swal.fire('เกิดข้อผิดพลาด', res.error || 'ระบบฝั่งหลังบ้านปฏิเสธการเซฟข้อมูล', 'error');
+                Swal.fire('เกิดข้อผิดพลาด', res.error || 'ระบบฝั่งหลังบ้านเซฟล้มเหลว', 'error');
             }
         } catch (error) {
-            Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่ายเน็ตเวิร์กเซิร์ฟเวอร์', 'error');
+            Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่ายเน็ตเวิร์กฐานข้อมูลหลัก', 'error');
         }
     }
 
-    // 🟢 ฟังก์ชันส่งเรื่องทำรายการตัดยอดรับพัสดุกายอุปกรณ์ส่งคืนกลับเข้าคลังส่วนกลาง
+    // 🟢 ฟังก์ชันส่งเรื่องคำสั่งทำรายการตัดสต็อกรับครุภัณฑ์พัสดุกายอุปกรณ์ส่งคืนกลับเข้าคลังสินค้า
     function processItemReturn(id) {
         Swal.fire({
             title: 'ยืนยันรับคืนอุปกรณ์ทางการแพทย์?',
-            text: "ระบบจะอัปเดตสถานะของพัสดุชิ้นนี้ให้กลับมาว่างพร้อมใช้งานสำหรับเคสถัดไปทันที",
+            text: "ระบบจะอัปเดตสเตตัสในคลังให้กลับมาว่างพร้อมใช้ และเปิดโอกาสสิทธิ์ให้เคสถัดไปขอยืมใช้งานทันที",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'ยืนยันรับคืนคลัง',
+            confirmButtonText: 'ยืนยันรับคืน',
             cancelButtonText: 'ยกเลิก'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'กำลังบันทึกตัดสต็อกรับคืนของ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                Swal.fire({ title: 'กำลังปรับปรุงสต็อกรับคืนพัสดุ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
                 try {
                     const res = await run('returnBorrow', { EntryID: id, ReturnDate: new Date().toISOString() });
                     if (res && res.success) {
-                        Swal.fire('รับคืนเสร็จสิ้น', 'ครุภัณฑ์พัสดุกลับคืนสถานะพร้อมใช้เรียบร้อยแล้ว', 'success');
+                        Swal.fire('รับคืนสำเร็จ', 'ครุภัณฑ์พัสดุอุปกรณ์สลับคืนสเตตัสพร้อมใช้งานแล้ว', 'success');
                         await loadData();
                     } else {
                         Swal.fire('ข้อผิดพลาด', res.error, 'error');
                     }
                 } catch (e) {
-                    Swal.fire('ล้มเหลว', 'ไม่สามารถส่งเรื่องสืบค้นติดต่อฐานข้อมูลหลักหลังบ้านได้', 'error');
+                    Swal.fire('ล้มเหลว', 'ไม่สามารถส่งเรื่องติดต่อสถานีฐานข้อมูลหลักฝั่งเซิร์ฟเวอร์ได้', 'error');
                 }
             }
         });
     }
 
-    // ฟังก์ชันเสริมสำหรับเปิดหน้าต่างโมดอลแอดมินตัวอื่นๆ ตามชุดคำสั่งสถาปัตยกรรมเดิมของคุณ
+    // กลุ่มฟังก์ชันเปิด-ปิด หน้าต่างกล่องควบคุมโมดอลตัวอื่นๆ ตามระเบียบคำสั่งเดิมของทางระบบคุณ
     function openSettings() { const m = document.getElementById('settings-modal'); if(m) m.classList.remove('hidden'); }
     function openEquipManager() { const m = document.getElementById('equip-modal'); if(m) m.classList.remove('hidden'); }
     function openTrackingReport() { const m = document.getElementById('tracking-modal'); if(m) m.classList.remove('hidden'); }
