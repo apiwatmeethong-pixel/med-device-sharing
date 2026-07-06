@@ -854,3 +854,103 @@ function openBorrowModal() { document.getElementById('modal-borrow').classList.a
 function closeBorrowModal() { document.getElementById('modal-borrow').classList.remove('active'); }
 function openEquipmentModal() { document.getElementById('modal-equipment').classList.add('active'); }
 function closeEquipmentModal() { document.getElementById('modal-equipment').classList.remove('active'); }
+
+// ฟังก์ชันสากลสำหรับสร้างชุดปุ่มกดพลิกหน้าเพจตารางข้อมูลสไตล์ Premium Soft UI
+function buildPaginationDashboardControls(controlsContainerId, infoLabelId, currentPageNumber, totalItemsCount, rowsLimit, pageChangeFunctionName) {
+    const containerElement = document.getElementById(controlsContainerId);
+    const infoLabelElement = document.getElementById(infoLabelId);
+    if (!containerElement) return;
+
+    const totalPagesCount = Math.ceil(totalItemsCount / rowsLimit) || 1;
+    const startRecordIndex = totalItemsCount === 0 ? 0 : (currentPageNumber - 1) * rowsLimit + 1;
+    const endRecordIndex = Math.min(currentPageNumber * rowsLimit, totalItemsCount);
+
+    if (infoLabelElement) {
+        infoLabelElement.innerText = `แสดงรายการที่ ${startRecordIndex} - ${endRecordIndex} จากทั้งหมด ${totalItemsCount} รายการ (หน้า ${currentPageNumber} / ${totalPagesCount})`;
+    }
+
+    // ดีไซน์ปุ่มย้อนกลับแบบตรวจสอบสิทธิ์ Disabled สวยงาม
+    let controlsHtmlStructure = `
+        <button onclick="${pageChangeFunctionName}(${currentPageNumber - 1})" ${currentPageNumber === 1 ? 'disabled class="text-gray-300 cursor-not-allowed px-2.5 py-1 font-bold text-xs"' : 'class="text-blue-600 hover:bg-blue-50 px-2.5 py-1 rounded-lg font-bold text-xs transition-all"'}>◀ ย้อนกลับ</button>
+    `;
+
+    // วาดเม็ดกระดุมตัวเลขหน้าเพจแบบยืดหยุ่น (Smart Page Numbers)
+    for (let pageIdx = 1; pageIdx <= totalPagesCount; pageIdx++) {
+        if (pageIdx === currentPageNumber) {
+            controlsHtmlStructure += `<span class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-sm">${pageIdx}</span>`;
+        } else if (pageIdx === 1 || pageIdx === totalPagesCount || Math.abs(pageIdx - currentPageNumber) <= 1) {
+            controlsHtmlStructure += `<button onclick="${pageChangeFunctionName}(${pageIdx})" class="text-gray-600 hover:bg-gray-100 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all">${pageIdx}</button>`;
+        } else if (pageIdx === currentPageNumber - 2 || pageIdx === currentPageNumber + 2) {
+            controlsHtmlStructure += `<span class="text-gray-400 px-1 text-xs">...</span>`;
+        }
+    }
+
+    // ดีไซน์ปุ่มหน้าถัดไป
+    controlsHtmlStructure += `
+        <button onclick="${pageChangeFunctionName}(${currentPageNumber + 1})" ${currentPageNumber === totalPagesCount ? 'disabled class="text-gray-300 cursor-not-allowed px-2.5 py-1 font-bold text-xs"' : 'class="text-blue-600 hover:bg-blue-50 px-2.5 py-1 rounded-lg font-bold text-xs transition-all"'}>ถัดไป ▶</button>
+    `;
+
+    containerElement.innerHTML = controlsHtmlStructure;
+}
+
+// 🔀 ฟังก์ชันรับช่วงคำสั่งคลิกเปลี่ยนหน้าของแต่ละตารางแยกจากกันอิสระ
+function changePublicPage(targetPage) {
+    publicCurrentPage = targetPage;
+    renderPublicBorrowTable(); // เรียกฟังก์ชันวาดตารางสาธารณะของคุณอีกครั้ง
+}
+
+function changeAdminPage(targetPage) {
+    adminCurrentPage = targetPage;
+    renderAdminBorrowTable(); // เรียกฟังก์ชันวาดตารางบันทึกสัญญาแอดมินของคุณอีกครั้ง
+}
+
+function changeEquipPage(targetPage) {
+    equipCurrentPage = targetPage;
+    renderEquipmentInventoryTable(); // เรียกฟังก์ชันวาดตารางคลังพัสดุของคุณอีกครั้ง
+}
+function renderPublicBorrowTable() {
+    // [โค้ดกรองข้อมูลหรือคัดแยกความปลอดภัยเดิมของคุณ...]
+    // สมมติว่าอาเรย์ผลลัพธ์สุดท้ายของคุณชื่อ filteredPublicData
+    
+    const totalItems = filteredPublicData.length;
+    
+    // ✂️ ทำการตัดแถวข้อมูลให้เหลือแสดงผลเฉพาะช่วงหน้าปัจจุบัน หน้าละ 20 แถวถ้วน
+    const startIdx = (publicCurrentPage - 1) * rowsPerPageLimit;
+    const paginatedItems = filteredPublicData.slice(startIdx, startIdx + rowsPerPageLimit);
+    
+    // รันลูปสร้างแถว <tr> ลงตารางจากก้อนข้อมูลสแนปช็อต paginatedItems แทนก้อนเดิม
+    // [โค้ดคำสั่ง .forEach หรือ lumping วาดตารางเดิมของคุณ...]
+
+    // 🖨️ สั่งวาดปุ่มและแถวรายละเอียดควบคุมการเปลี่ยนหน้าเพจสาธารณะท้ายตาราง
+    buildPaginationDashboardControls(
+        'public-pagination-controls', 
+        'public-pagination-info', 
+        publicCurrentPage, 
+        totalItems, 
+        rowsPerPageLimit, 
+        'changePublicPage'
+    );
+}
+function renderEquipmentInventoryTable() {
+    // [โค้ดคัดแยกหรือสืบค้นประเภทหมวดหมู่อุปกรณ์เข้าคลังพัสดุเดิมของคุณ...]
+    // สมมติว่าอาเรย์ผลลัพธ์คลังครุภัณฑ์พัสดุชื่อ filteredEquipmentsData
+    
+    const totalItems = filteredEquipmentsData.length;
+    
+    // ✂️ ทำการตัดแถวข้อมูลให้เหลือแสดงผลเฉพาะช่วงหน้าปัจจุบัน หน้าละ 20 แถวถ้วน
+    const startIdx = (equipCurrentPage - 1) * rowsPerPageLimit;
+    const paginatedItems = filteredEquipmentsData.slice(startIdx, startIdx + rowsPerPageLimit);
+    
+    // รันลูปสร้างแถว <tr> ลงตารางจากก้อนข้อมูลสแนปช็อต paginatedItems แทนก้อนเดิม
+    // [โค้ดคำสั่ง .forEach วาดตารางครุภัณฑ์คลังพัสดุเดิมของคุณ...]
+
+    // 🖨️ สั่งวาดปุ่มและแถวรายละเอียดควบคุมการเปลี่ยนหน้าเพจคลังพัสดุท้ายตาราง
+    buildPaginationDashboardControls(
+        'equip-pagination-controls', 
+        'equip-pagination-info', 
+        equipCurrentPage, 
+        totalItems, 
+        rowsPerPageLimit, 
+        'changeEquipPage'
+    );
+}
