@@ -1,173 +1,148 @@
-/**
- * ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ - Custom Stylesheet Theme (v2.3 อัปเดตธีมสีกรมท่าเข้ม)
- * แฟชั่นสไตล์: พาสเทลสดใสเด่นชัด & ซ่อนหดแถบเมนู (Dark Pastel Sidebar & Collapsible Layout)
- */
+/* ===================================================================
+   ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ — Stylesheet
+   =================================================================== */
 
-body {
-    background-color: #f8fafc;
-    font-family: 'Sarabun', sans-serif;
-    overflow-x: hidden;
-}
-
-/* ==========================================================================
-   🎨 ส่วนที่ปรับปรุง: ล็อกพื้นหลัง Sidebar ให้เป็นสีกรมท่าเข้ม ตัดพื้นหลังขาว
-   ========================================================================== */
-#sidebar {
-    background-color: #0F172A !important;
-    color: #94A3B8;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+:root{
+  --brand-indigo:#4f46e5;
+  --brand-indigo-dark:#3730a3;
+  --brand-teal:#0d9488;
+  --brand-amber:#d97706;
+  --brand-rose:#e11d48;
+  --surface:#f8fafc;
+  --sidebar-w:17rem;
+  --sidebar-w-collapsed:5rem;
 }
 
-/* เพิ่มการตกแต่งข้อความหัวข้อหน่วยงานและ Badge ในแถบเมนูเข้ม */
-#sidebar .agency-name-block h4, 
-#sidebar .agency-name-block h5 {
-    color: #F8FAFC !important;
+html{ scroll-behavior:smooth; }
+body.font-sarabun{ font-family:'Sarabun', sans-serif; }
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:99px; }
+::-webkit-scrollbar-thumb:hover{ background:#94a3b8; }
+
+/* ---------- sidebar ---------- */
+#sidebar{
+  width:var(--sidebar-w);
+  box-shadow:1px 0 0 rgba(15,23,42,.04);
 }
-#sidebar .admin-badge {
-    background-color: #1E293B !important;
-    color: #38BDF8 !important;
-    border: 1px solid #334155 !important;
+#sidebar.collapsed{ width:var(--sidebar-w-collapsed); }
+#sidebar.collapsed .agency-name-block,
+#sidebar.collapsed .menu-text{
+  opacity:0; width:0; overflow:hidden; margin:0; pointer-events:none;
+}
+#sidebar.collapsed nav button,
+#sidebar.collapsed .p-3.border-t button{ justify-content:center; }
+#sidebar.collapsed #minimize-icon{ transform:rotate(180deg); }
+
+#main-wrapper.sidebar-collapsed{ }
+@media (min-width:768px){
+  #main-wrapper.md\:pl-64{ padding-left:var(--sidebar-w); transition:padding-left .3s ease; }
+  #main-wrapper.md\:pl-64.sidebar-collapsed{ padding-left:var(--sidebar-w-collapsed); }
 }
 
-/* ปรับแต่งปุ่มรายการเมนู (สไตล์เดิมแต่ปรับเฉดสีให้เข้ากับธีมเข้มพรีเมียม) */
-.menu-item {
-    color: #94A3B8 !important;
-    background-color: transparent !important;
-    border-left: 4px solid transparent !important;
-    transition: all 0.2s ease;
+.menu-item{
+  color:#64748b;
+  position:relative;
+  border:1px solid transparent;
+}
+.menu-item i{ transition:transform .2s ease; }
+.menu-item:hover{
+  background:#f8fafc;
+  color:#334155;
+}
+.menu-item:hover i{ transform:translateY(-1px) scale(1.05); }
+.menu-item.active{
+  background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);
+  color:var(--brand-indigo-dark);
+  font-weight:700;
+  border-color:rgba(79,70,229,.12);
+  box-shadow:inset 0 0 0 1px rgba(79,70,229,.06);
+}
+.menu-item.active::before{
+  content:'';
+  position:absolute; left:-0.75rem; top:50%; transform:translateY(-50%);
+  width:4px; height:22px; border-radius:99px;
+  background:var(--brand-indigo);
 }
 
-/* เอฟเฟกต์ตอนเอาเมาส์ไปชี้เมนู */
-.menu-item:hover {
-    color: #F8FAFC !important;
-    background-color: #1E293B !important; /* พื้นหลังเมนูสว่างขึ้นมาหนึ่งเฉด */
-    text-decoration: none !important;
+.menu-badge{
+  margin-left:auto;
+  font-size:10px;
+  font-weight:800;
+  padding:1px 7px;
+  border-radius:99px;
+  background:#fecdd3;
+  color:#9f1239;
+  line-height:1.5;
+}
+#sidebar.collapsed .menu-badge{ display:none; }
+
+/* ---------- generic polish ---------- */
+.table-report thead th{ letter-spacing:.03em; }
+.table-report tbody tr{ transition:background-color .12s ease; }
+
+.stat-card{
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.stat-card:hover{ transform:translateY(-2px); box-shadow:0 10px 24px -12px rgba(15,23,42,.18); }
+
+/* ---------- signature element: usage allocation bar ---------- */
+.usage-bar-track{
+  display:flex;
+  width:100%;
+  height:14px;
+  border-radius:99px;
+  overflow:hidden;
+  background:#e2e8f0;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.04);
+}
+.usage-bar-seg{
+  height:100%;
+  transition:width .6s cubic-bezier(.16,1,.3,1);
+}
+.usage-bar-seg.seg-available{ background:linear-gradient(90deg,#34d399,#10b981); }
+.usage-bar-seg.seg-borrowed{ background:linear-gradient(90deg,#fb7185,#e11d48); }
+.usage-bar-seg.seg-overdue{ background:linear-gradient(90deg,#f59e0b,#b45309); }
+
+.usage-legend-dot{
+  display:inline-block; width:9px; height:9px; border-radius:99px; margin-right:6px;
 }
 
-/* สถานะเมนูที่กำลังเปิดใช้งาน (Active) ล็อกเฉดม่วงครามพาสเทลเดิมของพี่ แต่ตัดขอบเส้นฟ้า */
-.menu-item.active {
-    background: linear-gradient(135deg, #6366F1, #4F46E5) !important; 
-    color: #FFFFFF !important;
-    font-weight: 600;
-    border-left-color: #38BDF8 !important; /* ไฮไลต์เส้นขอบซ้ายสีฟ้าสะท้อนแสงเด่นชัด */
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+/* ---------- modals ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:50;
+  background:rgba(15,23,42,.55);
+  backdrop-filter:blur(2px);
+  display:none;
+  align-items:center; justify-content:center;
+}
+.modal-backdrop.active{ display:flex; }
+
+@keyframes scaleIn{
+  from{ opacity:0; transform:scale(.95) translateY(6px); }
+  to{ opacity:1; transform:scale(1) translateY(0); }
+}
+.animate-scale{ animation:scaleIn .18s ease-out; }
+
+/* ---------- badges / status pill hover polish ---------- */
+.badge-pill{ display:inline-flex; align-items:center; gap:4px; }
+
+/* ---------- print ---------- */
+@media print{
+  body *{ visibility:hidden; }
+  #print-section, #print-section *{ visibility:visible; }
+  #print-tracking-section, #print-tracking-section *{ visibility:visible; }
+  body.print-mode-receipt #print-section{ display:block !important; position:absolute; top:0; left:0; width:100%; }
+  body.print-mode-tracking #print-tracking-section{ display:block !important; position:absolute; top:0; left:0; width:100%; }
 }
 
-/* ==========================================================================
-   🔒 ส่วนโครงสร้างระบบเครื่องยนต์เดิม (คงเดิมไว้ทั้งหมด ไม่แก้ไขโครงสร้างลอจิก)
-   ========================================================================== */
-#sidebar.collapsed {
-    width: 72px !important;
-}
-#sidebar.collapsed .menu-text,
-#sidebar.collapsed .admin-badge,
-#sidebar.collapsed .agency-name-block {
-    opacity: 0;
-    max-width: 0;
-    display: none !important;
-}
-#sidebar.collapsed .menu-item {
-    justify-content: center;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    border-left-width: 0px !important;
-}
-#sidebar.collapsed .menu-item i {
-    font-size: 1.25rem;
-}
+/* ---------- misc utility ---------- */
+.fade-in{ animation:fadeIn .25s ease-out; }
+@keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
 
-#main-wrapper.sidebar-collapsed {
-    padding-left: 72px !important;
-}
-
-.table-report th {
-    font-weight: 700;
-    color: #475569;
-    background-color: #f1f5f9;
-    border-bottom: 2px solid #e2e8f0;
-}
-.table-report td {
-    padding: 0.85rem 0.75rem;
-    vertical-align: middle;
-}
-
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(5px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-
-.modal-backdrop.active {
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.animate-scale {
-    animation: zoomInEffect 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes zoomInEffect {
-    from { transform: scale(0.96); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-/* ==========================================================================
-   ⚙️ ตรรกะคุมเลย์เอาต์ระบบเครื่องพิมพ์พิมพ์เอกสารสัญญา (Official Print CSS Locks)
-   ========================================================================== */
-@media print {
-    /* ซ่อนแถบเครื่องมือและหน้าต่างแอปพลิเคชันหลักออกไปทั้งหมดตามปกติทิ้งไว้ก่อน */
-    #sidebar, header, .print\:hidden, button, input, select, textarea, #public-pdpa-banner, .leaflet-control-container, .modal-backdrop {
-        display: none !important;
-    }
-    #main-wrapper {
-        padding-left: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* 🔒 ล็อกเด็ดขาด: หากอยู่ในโหมดพิมพ์สัญญา ให้ซ่อนเลย์เอาต์หน้าหลักทั้งหมด แล้วแสดงเฉพาะใบยืมสัญญาตัวจริง */
-    body.print-mode-receipt #main-wrapper {
-        display: none !important;
-    }
-    body.print-mode-receipt #print-section {
-        display: block !important;
-    }
-    body.print-mode-receipt #print-tracking-section {
-        display: none !important;
-    }
-
-    /* 🔒 ล็อกเด็ดขาด: หากอยู่ในโหมดพิมพ์รายงานตารางสรุปค้างส่งคืน ให้แสดงเฉพาะตัวตารางแนวนอน */
-    body.print-mode-tracking #main-wrapper {
-        display: none !important;
-    }
-    body.print-mode-tracking #print-section {
-        display: none !important;
-    }
-    body.print-mode-tracking #print-tracking-section {
-        display: block !important;
-    }
-
-    /* การตั้งค่าหน้ากระดาษเบื้องต้นสำหรับรายงาน */
-    table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-    }
-    table th, table td {
-        border: 1px solid #000000 !important;
-        color: #000000 !important;
-        padding: 5px 6px !important;
-    }
+.empty-state{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.5rem; padding:2.5rem 1rem; color:#94a3b8;
 }

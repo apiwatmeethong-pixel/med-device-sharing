@@ -36,6 +36,7 @@
                 <button onclick="switchTab('borrow')" id="btn-menu-borrow" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
                     <i class="fa-solid fa-handshake text-lg text-teal-500 w-6 text-center"></i> 
                     <span class="menu-text transition-all duration-200">บันทึกการยืม-คืน</span>
+                    <span id="menu-badge-borrow" class="menu-badge hidden">0</span>
                 </button>
                 <button onclick="switchTab('equipments')" id="btn-menu-equipments" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
                     <i class="fa-solid fa-wheelchair text-lg text-amber-500 w-6 text-center"></i> 
@@ -105,27 +106,49 @@
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="dashboard-kpi-grid">
-                    <div class="bg-blue-50/70 border border-blue-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4" id="dashboard-kpi-grid">
+                    <div class="stat-card bg-blue-50/70 border border-blue-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
                         <p class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">อุปกรณ์ทั้งหมดในคลัง</p>
                         <h4 id="stat-total-eq" class="text-2xl font-black text-blue-900 mt-1">0</h4>
                         <i class="fa-solid fa-boxes-stacked text-4xl text-blue-200/40 absolute bottom-2 right-2"></i>
                     </div>
-                    <div class="bg-emerald-50/70 border border-emerald-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
+                    <div class="stat-card bg-emerald-50/70 border border-emerald-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
                         <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">พร้อมใช้งาน (ว่าง)</p>
                         <h4 id="stat-avail-eq" class="text-2xl font-black text-emerald-900 mt-1">0</h4>
                         <i class="fa-solid fa-circle-check text-4xl text-emerald-200/40 absolute bottom-2 right-2"></i>
                     </div>
-                    <div class="bg-rose-50/70 border border-rose-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
+                    <div class="stat-card bg-rose-50/70 border border-rose-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
                         <p class="text-[11px] font-bold text-rose-600 uppercase tracking-wider">ถูกยืมไปใช้งาน</p>
                         <h4 id="stat-borrow-eq" class="text-2xl font-black text-rose-900 mt-1">0</h4>
                         <i class="fa-solid fa-handshake-angle text-4xl text-rose-200/40 absolute bottom-2 right-2"></i>
                     </div>
-                    <div class="bg-purple-50/70 border border-purple-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
+                    <div class="stat-card bg-amber-50/70 border border-amber-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
+                        <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">เกินกำหนดคืน (6 ด.)</p>
+                        <h4 id="stat-overdue-eq" class="text-2xl font-black text-amber-900 mt-1">0</h4>
+                        <i class="fa-solid fa-triangle-exclamation text-4xl text-amber-200/40 absolute bottom-2 right-2"></i>
+                    </div>
+                    <div class="stat-card bg-purple-50/70 border border-purple-100/50 p-4 rounded-2xl relative overflow-hidden shadow-sm">
                         <p class="text-[11px] font-bold text-purple-600 uppercase tracking-wider">ประวัติบันทึกรวม</p>
                         <h4 id="stat-total-logs" class="text-2xl font-black text-purple-900 mt-1">0</h4>
                         <i class="fa-solid fa-clock-rotate-left text-4xl text-purple-200/40 absolute bottom-2 right-2"></i>
                     </div>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced text-indigo-500"></i> สัดส่วนสถานะการใช้งานครุภัณฑ์ (ยืม-คืน หักลบ)</h4>
+                        <div class="flex items-center gap-3 text-[11px] font-semibold text-gray-500">
+                            <span><span class="usage-legend-dot bg-emerald-500"></span>ว่าง <span id="usage-legend-avail">0</span></span>
+                            <span><span class="usage-legend-dot bg-rose-600"></span>ถูกยืม <span id="usage-legend-borrow">0</span></span>
+                            <span><span class="usage-legend-dot bg-amber-600"></span>เกินกำหนด <span id="usage-legend-overdue">0</span></span>
+                        </div>
+                    </div>
+                    <div class="usage-bar-track" id="usage-bar-track">
+                        <div class="usage-bar-seg seg-available" id="usage-seg-available" style="width:100%"></div>
+                        <div class="usage-bar-seg seg-borrowed" id="usage-seg-borrowed" style="width:0%"></div>
+                        <div class="usage-bar-seg seg-overdue" id="usage-seg-overdue" style="width:0%"></div>
+                    </div>
+                    <p id="usage-bar-caption" class="text-[11px] text-gray-400">กำลังคำนวณสัดส่วนสถานะครุภัณฑ์...</p>
                 </div>
 
                 <div class="space-y-3">
@@ -142,7 +165,7 @@
                             <p class="text-xs text-gray-400">รายการประวัติฉบับย่อเพื่อใช้สำหรับการตรวจสอบสถิติเชิงพื้นที่</p>
                         </div>
                         <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <input type="text" id="search-borrow-table" oninput="filterBorrowTable()" placeholder="ค้นหารหัสพัสดุ, ชุมชน..." class="border border-gray-200 px-3 py-2 rounded-xl text-xs w-full sm:w-64 focus:outline-none" />
+                            <input type="text" id="search-borrow-table" oninput="publicCurrentPage=1; renderBorrowTable();" placeholder="ค้นหารหัสพัสดุ, ชุมชน..." class="border border-gray-200 px-3 py-2 rounded-xl text-xs w-full sm:w-64 focus:outline-none" />
                             <button onclick="exportToCSV('BorrowLog')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-200/40 transition flex items-center gap-1.5 whitespace-nowrap">
                                 <i class="fa-solid fa-file-excel"></i> ส่งออก Excel
                             </button>
@@ -225,6 +248,18 @@
                     </div>
                 </div>
 
+                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col md:flex-row gap-3 items-center justify-between print:hidden">
+                    <div class="relative w-full md:w-80">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                        <input type="text" id="search-equip-table" oninput="equipCurrentPage=1; renderEquipmentTable();" placeholder="ค้นหารหัสพัสดุ, หมวดหมู่, ซีเรียล..." class="border border-gray-200 pl-9 pr-3 py-2 rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    </div>
+                    <select id="equip-status-filter" onchange="equipCurrentPage=1; renderEquipmentTable();" class="border border-gray-200 px-3 py-2 rounded-xl bg-white text-xs w-full md:w-56 focus:outline-none">
+                        <option value="all">📁 แสดงสถานะทั้งหมด</option>
+                        <option value="available">🟢 พร้อมใช้งาน (ว่าง)</option>
+                        <option value="borrowed">🔴 ถูกยืมไปใช้งาน</option>
+                    </select>
+                </div>
+
                 <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden p-5">
                     <div class="overflow-x-auto rounded-xl border border-gray-100">
                         <table class="w-full text-left border-collapse table-report">
@@ -297,7 +332,7 @@
         </main>
 
         <footer class="bg-white border-t border-gray-100 py-3 px-6 text-center text-[11px] text-gray-400 font-medium mt-auto print:hidden">
-            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.2 | พัฒนาโดย ศบส.บ้านโทกหัวช้าง (James)</div>
+            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.3 | พัฒนาโดย ศบส.บ้านโทกหัวช้าง (James)</div>
         </footer>
     </div>
 
@@ -409,19 +444,16 @@
                     <th class="border border-black p-2">รหัสพัสดุ</th>
                     <th class="border border-black p-2 text-left">รายละเอียดผู้ขอยืม/บ้านเลขที่พื้นที่</th>
                     <th class="border border-black p-2">สถานะสัญญารวม</th>
+                    <th class="border border-black p-2">ระยะเวลาสัญญารวม</th>
                     <th class="border border-black p-2">วันที่เริ่มยืม</th>
                     <th class="border border-black p-2">วันครบกำหนดส่งคืน</th>
                     <th class="border border-black p-2">เบอร์โทรศัพท์</th>
-                    <th class="border border-black p-2">หมายเหตุการติดตามหน้างาน</th>
+                    <th class="border border-black p-2">สถานะการส่งสัญญาณ</th>
                 </tr>
             </thead>
             <tbody id="tracking-print-body">
                 </tbody>
         </table>
-        <div class="bg-gray-50/70 px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs font-medium text-gray-500 rounded-b-2xl">
-    <span id="admin-pagination-info">กำลังคำนวณรายการสัญญารวม...</span>
-    <div class="flex items-center gap-1.5" id="admin-pagination-controls"></div>
-</div>
     </div>
 
     <div id="tracking-modal" class="modal-backdrop">
@@ -452,10 +484,9 @@
                     <tbody id="tracking-table-body" class="bg-white divide-y divide-gray-100 text-gray-600">
                         </tbody>
                 </table>
-                <div class="bg-gray-50/70 px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs font-medium text-gray-500 rounded-b-2xl">
-    <span id="admin-pagination-info">กำลังคำนวณรายการสัญญารวม...</span>
-    <div class="flex items-center gap-1.5" id="admin-pagination-controls"></div>
-</div>
+                <div class="bg-gray-50/70 px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2 text-xs font-medium text-gray-500 rounded-b-2xl">
+                    <span id="tracking-summary-info">กำลังคำนวณรายการสัญญารวม...</span>
+                </div>
             </div>
         </div>
     </div>

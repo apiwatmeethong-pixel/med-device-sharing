@@ -140,17 +140,84 @@ function applySystemConfiguration() {
     }
 }
 
+// คืนค่ารายการที่กำลังยืมใช้งานอยู่ทั้งหมด (ยังไม่ถูกส่งคืน)
+function getActiveBorrows() {
+    return state.data.filter(b => {
+        const status = b.Status || b[8];
+        return status === 'Borrowed' || status === 'ยืม';
+    });
+}
+
+// ตรวจสอบว่ารายการยืมเกินกำหนดสัญญา 6 เดือนแล้วหรือยัง
+function isOverdueBorrow(row) {
+    const rawDate = row.BorrowDate || row[9];
+    if (!rawDate) return false;
+    const dueDate = new Date(rawDate);
+    dueDate.setMonth(dueDate.getMonth() + 6);
+    return dueDate.getTime() < Date.now();
+}
+
 function renderDashboardStats() {
     const totalEq = state.equipments.length;
     document.getElementById('stat-total-eq').innerText = totalEq;
-    const borrowedCount = state.data.filter(b => {
-        const status = b.Status || b[8];
-        return status === 'Borrowed' || status === 'ยืม';
-    }).length;
+
+    const activeBorrows = getActiveBorrows();
+    const borrowedCount = activeBorrows.length;
     document.getElementById('stat-borrow-eq').innerText = borrowedCount;
+
     const availableCount = totalEq - borrowedCount;
     document.getElementById('stat-avail-eq').innerText = availableCount >= 0 ? availableCount : 0;
+
+    const overdueCount = activeBorrows.filter(isOverdueBorrow).length;
+    const overdueEl = document.getElementById('stat-overdue-eq');
+    if (overdueEl) overdueEl.innerText = overdueCount;
+
     document.getElementById('stat-total-logs').innerText = state.data.length;
+
+    renderUsageAllocationBar(totalEq, availableCount >= 0 ? availableCount : 0, borrowedCount, overdueCount);
+    updateSidebarBorrowBadge(borrowedCount);
+}
+
+// 🎯 วาดแถบสัดส่วนสถานะการใช้งานครุภัณฑ์ (สรุปยืม-คืน หักลบ แบบเห็นภาพรวมทันที)
+function renderUsageAllocationBar(totalEq, availableCount, borrowedCount, overdueCount) {
+    const segAvail = document.getElementById('usage-seg-available');
+    const segBorrow = document.getElementById('usage-seg-borrowed');
+    const segOverdue = document.getElementById('usage-seg-overdue');
+    const caption = document.getElementById('usage-bar-caption');
+    if (!segAvail || !segBorrow || !segOverdue) return;
+
+    const normalBorrowed = Math.max(borrowedCount - overdueCount, 0);
+    const safeTotal = totalEq > 0 ? totalEq : 1;
+
+    const pctAvail = (availableCount / safeTotal) * 100;
+    const pctBorrow = (normalBorrowed / safeTotal) * 100;
+    const pctOverdue = (overdueCount / safeTotal) * 100;
+
+    segAvail.style.width = pctAvail + '%';
+    segBorrow.style.width = pctBorrow + '%';
+    segOverdue.style.width = pctOverdue + '%';
+
+    document.getElementById('usage-legend-avail').innerText = availableCount;
+    document.getElementById('usage-legend-borrow').innerText = borrowedCount;
+    document.getElementById('usage-legend-overdue').innerText = overdueCount;
+
+    if (totalEq === 0) {
+        caption.innerText = 'ยังไม่มีข้อมูลครุภัณฑ์ในคลัง กรุณาลงทะเบียนอุปกรณ์เพื่อเริ่มใช้งานระบบ';
+    } else {
+        caption.innerText = `จากครุภัณฑ์ทั้งหมด ${totalEq} ชิ้น: พร้อมใช้งาน ${availableCount} ชิ้น (${pctAvail.toFixed(0)}%), อยู่ระหว่างยืมใช้งาน ${borrowedCount} ชิ้น (${(pctBorrow + pctOverdue).toFixed(0)}%) ในจำนวนนี้เกินกำหนดส่งคืน ${overdueCount} ชิ้น`;
+    }
+}
+
+// 🔔 อัปเดตตัวเลขแจ้งเตือนจำนวนรายการยืมค้างอยู่บนเมนูข้างซ้าย
+function updateSidebarBorrowBadge(borrowedCount) {
+    const badge = document.getElementById('menu-badge-borrow');
+    if (!badge) return;
+    if (borrowedCount > 0) {
+        badge.innerText = borrowedCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
 }
 
 function renderEquipmentTypeGrid() {
@@ -210,36 +277,63 @@ function renderEquipmentTypeGrid() {
     }
 }
 
-// เรนเดอร์ตารางสรุปประวัติภาพรวม (แดชบอร์ดสาธารณะล่างสุด)
+// เรนเดอร์ตารางสรุปประวัติภาพรวม (แดชบอร์ดสาธารณะล่างสุด) พร้อมค้นหาและแบ่งหน้าจริง
 function renderBorrowTable() {
     const tbody = document.getElementById('borrow-rows');
     if (!tbody) return;
-    tbody.innerHTML = '';
-    if (state.data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-6 text-gray-400">❌ ไม่พบประวัติการทำรายการขอยืมครุภัณฑ์</td></tr>`;
-        return;
-    }
-    state.data.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-gray-50/70 transition-all duration-100";
-        const statusRaw = item.Status || item[8];
-        let statusBadge = (statusRaw === 'Borrowed' || statusRaw === 'ยืม') ?
-            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100">กำลังยืม</span>` :
-            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">คืนคลังแล้ว</span>`;
-        const rawDate = item.BorrowDate || item[9];
-        const borrowDateFormatted = rawDate ? new Date(rawDate).toLocaleDateString('th-TH') : '-';
 
-        tr.innerHTML = `
-            <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || item[5] || '-'}</td>
-            <td class="p-3 font-medium">${item.PatientName || item.BorrowerName || item[13] || item[1] || '-'}</td>
-            <td class="p-3 font-mono text-gray-400">${item.CitizenID || item[2] || '-'}</td>
-            <td class="p-3">${item.Community || item[4] || '-'}</td>
-            <td class="p-3">${borrowDateFormatted}</td>
-            <td class="p-3 font-mono text-gray-400">${item.Phone || item[12] || '-'}</td>
-            <td class="p-3">${statusBadge}</td>
-        `;
-        tbody.appendChild(tr);
+    const searchBox = document.getElementById('search-borrow-table');
+    const keyword = searchBox ? searchBox.value.toLowerCase().trim() : '';
+
+    const filtered = state.data.filter(item => {
+        if (!keyword) return true;
+        const eqId = String(item.EquipmentID || item[5] || '').toLowerCase();
+        const community = String(item.Community || item[4] || '').toLowerCase();
+        const patient = String(item.PatientName || item.BorrowerName || item[13] || item[1] || '').toLowerCase();
+        return eqId.includes(keyword) || community.includes(keyword) || patient.includes(keyword);
     });
+
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / rowsPerPageLimit) || 1;
+    if (publicCurrentPage > totalPages) publicCurrentPage = totalPages;
+    const startIdx = (publicCurrentPage - 1) * rowsPerPageLimit;
+    const pageItems = filtered.slice(startIdx, startIdx + rowsPerPageLimit);
+
+    tbody.innerHTML = '';
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-6 text-gray-400">❌ ไม่พบประวัติการทำรายการขอยืมครุภัณฑ์ที่ตรงกับการค้นหา</td></tr>`;
+    } else {
+        pageItems.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50/70 transition-all duration-100";
+            const statusRaw = item.Status || item[8];
+            let statusBadge = (statusRaw === 'Borrowed' || statusRaw === 'ยืม') ?
+                `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100">กำลังยืม</span>` :
+                `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">คืนคลังแล้ว</span>`;
+            const rawDate = item.BorrowDate || item[9];
+            const borrowDateFormatted = rawDate ? new Date(rawDate).toLocaleDateString('th-TH') : '-';
+
+            tr.innerHTML = `
+                <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || item[5] || '-'}</td>
+                <td class="p-3 font-medium">${item.PatientName || item.BorrowerName || item[13] || item[1] || '-'}</td>
+                <td class="p-3 font-mono text-gray-400">${item.CitizenID || item[2] || '-'}</td>
+                <td class="p-3">${item.Community || item[4] || '-'}</td>
+                <td class="p-3">${borrowDateFormatted}</td>
+                <td class="p-3 font-mono text-gray-400">${item.Phone || item[12] || '-'}</td>
+                <td class="p-3">${statusBadge}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    buildPaginationDashboardControls(
+        'public-pagination-controls',
+        'public-pagination-info',
+        publicCurrentPage,
+        totalItems,
+        rowsPerPageLimit,
+        'changePublicPage'
+    );
 }
 
 // ✅ เพิ่มส่วนสำคัญ: ฟังก์ชันจัดทำระบบตารางแบบแบ่งเพจ สืบคัน คัดกรอง และประมวลผลคำสั่งพิมพ์หน้าแอดมินงานยืมคืน
@@ -453,11 +547,9 @@ function printLoanReceipt(entryId) {
 }
 
 function openTrackingReport() {
-    const borrowedItems = state.data.filter(r => {
-        const status = r.Status || r[8];
-        return status === 'Borrowed' || status === 'ยืม';
-    });
+    const borrowedItems = getActiveBorrows();
     let html = '';
+    let overdueTally = 0;
 
     borrowedItems.forEach(row => {
         const eqId = row.EquipmentID || row[5];
@@ -467,10 +559,12 @@ function openTrackingReport() {
         const address = row.Address || row[3] || '';
         const community = row.Community || row[4] || '';
         const borrowerDetails = `${patient} (${address} เขต ${community})`;
-        
+
         let borrowDateStr = '-';
         let dueDateStr = '-';
         const rawDate = row.BorrowDate || row[9];
+        const overdue = isOverdueBorrow(row);
+        if (overdue) overdueTally++;
         if (rawDate) {
             const bDate = new Date(rawDate);
             borrowDateStr = bDate.toLocaleDateString('th-TH');
@@ -479,8 +573,12 @@ function openTrackingReport() {
             dueDateStr = dDate.toLocaleDateString('th-TH');
         }
 
+        const signalBadge = overdue
+            ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200">⚠️ เกินกำหนด</span>`
+            : `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">ปกติ</span>`;
+
         html += `
-            <tr class="hover:bg-gray-50/70 transition">
+            <tr class="hover:bg-gray-50/70 transition ${overdue ? 'bg-rose-50/30' : ''}">
                 <td class="border border-gray-200 p-2 font-semibold text-orange-600">${eqId}</td>
                 <td class="border border-gray-200 p-2 text-left">${borrowerDetails}</td>
                 <td class="border border-gray-200 p-2 text-gray-500">กำลังยืมใช้งาน</td>
@@ -488,7 +586,7 @@ function openTrackingReport() {
                 <td class="border border-gray-200 p-2 text-emerald-600">${borrowDateStr}</td>
                 <td class="border border-gray-200 p-2 font-bold text-rose-600 bg-rose-50/40">${dueDateStr}</td>
                 <td class="border border-gray-200 p-2 font-mono">${row.Phone || row[12] || '-'}</td>
-                <td class="border border-gray-200 p-2 text-gray-400">${new Date().toLocaleDateString('th-TH')}</td>
+                <td class="border border-gray-200 p-2">${signalBadge}</td>
             </tr>
         `;
     });
@@ -498,6 +596,10 @@ function openTrackingReport() {
     }
 
     document.getElementById('tracking-table-body').innerHTML = html;
+    const summaryEl = document.getElementById('tracking-summary-info');
+    if (summaryEl) {
+        summaryEl.innerText = `รายการค้างส่งคืนทั้งหมด ${borrowedItems.length} รายการ (เกินกำหนด ${overdueTally} รายการ)`;
+    }
     document.getElementById('tracking-modal').classList.add('active');
 }
 
@@ -515,32 +617,69 @@ function printTrackingReport() {
 function renderEquipmentTable() {
     const tbody = document.getElementById('equipment-rows');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
+    const searchBox = document.getElementById('search-equip-table');
+    const statusFilterEl = document.getElementById('equip-status-filter');
+    const keyword = searchBox ? searchBox.value.toLowerCase().trim() : '';
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'all';
+
+    const filtered = state.equipments.filter(item => {
+        const status = String(item.Status || item[3] || '').trim();
+        const isAvailable = (status === 'Available' || status === 'ว่าง');
+
+        let statusMatch = true;
+        if (statusFilter === 'available') statusMatch = isAvailable;
+        if (statusFilter === 'borrowed') statusMatch = !isAvailable;
+        if (!statusMatch) return false;
+
+        if (!keyword) return true;
+        const eqId = String(item.EquipmentID || item[0] || '').toLowerCase();
+        const eqName = String(item.EquipmentName || item[1] || '').toLowerCase();
+        const serial = String(item.SerialNumber || item[2] || '').toLowerCase();
+        return eqId.includes(keyword) || eqName.includes(keyword) || serial.includes(keyword);
+    });
+
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / rowsPerPageLimit) || 1;
+    if (equipCurrentPage > totalPages) equipCurrentPage = totalPages;
+    const startIdx = (equipCurrentPage - 1) * rowsPerPageLimit;
+    const pageItems = filtered.slice(startIdx, startIdx + rowsPerPageLimit);
+
+    tbody.innerHTML = '';
     if (state.equipments.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">❌ ไม่พบชุดข้อมูลพัสดุอุปกรณ์ที่ลงทะเบียนในคลัง</td></tr>`;
-        return;
+    } else if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">❌ ไม่พบรายการที่ตรงกับการค้นหาหรือตัวกรองสถานะ</td></tr>`;
+    } else {
+        pageItems.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50/70 transition-all duration-100";
+            const status = item.Status || item[3];
+            let statusBadge = (status === 'Available' || status === 'ว่าง') ?
+                `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><i class="fa-solid fa-check-circle mr-1"></i>ว่างพร้อมใช้</span>` :
+                `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100"><i class="fa-solid fa-handshake mr-1"></i>ถูกยืมไปคลัง</span>`;
+
+            tr.innerHTML = `
+                <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || item[0] || '-'}</td>
+                <td class="p-3 font-medium text-gray-800">${item.EquipmentName || item[1] || '-'}</td>
+                <td class="p-3 font-mono text-gray-400">${item.SerialNumber || item[2] || '-'}</td>
+                <td class="p-3">${statusBadge}</td>
+                <td class="p-3 print:hidden">
+                    <button onclick="deleteEquipmentRecord('${item.EquipmentID || item[0]}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
-    state.equipments.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-gray-50/70 transition-all duration-100";
-        const status = item.Status || item[3];
-        let statusBadge = (status === 'Available' || status === 'ว่าง') ?
-            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><i class="fa-solid fa-check-circle mr-1"></i>ว่างพร้อมใช้</span>` :
-            `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100"><i class="fa-solid fa-handshake mr-1"></i>ถูกยืมไปคลัง</span>`;
-
-        tr.innerHTML = `
-            <td class="p-3 font-semibold text-gray-700">${item.EquipmentID || item[0] || '-'}</td>
-            <td class="p-3 font-medium text-gray-800">${item.EquipmentName || item[1] || '-'}</td>
-            <td class="p-3 font-mono text-gray-400">${item.SerialNumber || item[2] || '-'}</td>
-            <td class="p-3">${statusBadge}</td>
-            <td class="p-3 print:hidden">
-                <button onclick="deleteEquipmentRecord('${item.EquipmentID || item[0]}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+    buildPaginationDashboardControls(
+        'equip-pagination-controls',
+        'equip-pagination-info',
+        equipCurrentPage,
+        totalItems,
+        rowsPerPageLimit,
+        'changeEquipPage'
+    );
 }
 
 function populateFormSelectors() {
@@ -686,15 +825,6 @@ function getCurrentLocation() {
         document.getElementById('borrow-gps').value = `${pos.coords.latitude}, ${pos.coords.longitude}`;
         Swal.fire('สำเร็จ', 'ดึงตำแหน่งพิกัดภูมิศาสตร์เรียบร้อย', 'success');
     }, (err) => { Swal.fire('ขัดข้อง', 'สัญญาณดาวเทียมอับหรือยกเลิกสิทธิ์ส่งต่อพิกัด', 'error'); }, { enableHighAccuracy: true, timeout: 8000 });
-}
-
-function filterBorrowTable() {
-    const text = document.getElementById('search-borrow-table').value.toLowerCase();
-    const rows = document.querySelectorAll('#borrow-rows tr');
-    rows.forEach(row => {
-        if (row.cells.length < 2) return;
-        row.style.display = row.innerText.toLowerCase().includes(text) ? '' : 'none';
-    });
 }
 
 function exportToCSV(sheetName) {
@@ -896,61 +1026,10 @@ function buildPaginationDashboardControls(controlsContainerId, infoLabelId, curr
 // 🔀 ฟังก์ชันรับช่วงคำสั่งคลิกเปลี่ยนหน้าของแต่ละตารางแยกจากกันอิสระ
 function changePublicPage(targetPage) {
     publicCurrentPage = targetPage;
-    renderPublicBorrowTable(); // เรียกฟังก์ชันวาดตารางสาธารณะของคุณอีกครั้ง
-}
-
-function changeAdminPage(targetPage) {
-    adminCurrentPage = targetPage;
-    renderAdminBorrowTable(); // เรียกฟังก์ชันวาดตารางบันทึกสัญญาแอดมินของคุณอีกครั้ง
+    renderBorrowTable(); // เรียกฟังก์ชันวาดตารางสาธารณะอีกครั้งพร้อมหน้าใหม่
 }
 
 function changeEquipPage(targetPage) {
     equipCurrentPage = targetPage;
-    renderEquipmentInventoryTable(); // เรียกฟังก์ชันวาดตารางคลังพัสดุของคุณอีกครั้ง
-}
-function renderPublicBorrowTable() {
-    // [โค้ดกรองข้อมูลหรือคัดแยกความปลอดภัยเดิมของคุณ...]
-    // สมมติว่าอาเรย์ผลลัพธ์สุดท้ายของคุณชื่อ filteredPublicData
-    
-    const totalItems = filteredPublicData.length;
-    
-    // ✂️ ทำการตัดแถวข้อมูลให้เหลือแสดงผลเฉพาะช่วงหน้าปัจจุบัน หน้าละ 20 แถวถ้วน
-    const startIdx = (publicCurrentPage - 1) * rowsPerPageLimit;
-    const paginatedItems = filteredPublicData.slice(startIdx, startIdx + rowsPerPageLimit);
-    
-    // รันลูปสร้างแถว <tr> ลงตารางจากก้อนข้อมูลสแนปช็อต paginatedItems แทนก้อนเดิม
-    // [โค้ดคำสั่ง .forEach หรือ lumping วาดตารางเดิมของคุณ...]
-
-    // 🖨️ สั่งวาดปุ่มและแถวรายละเอียดควบคุมการเปลี่ยนหน้าเพจสาธารณะท้ายตาราง
-    buildPaginationDashboardControls(
-        'public-pagination-controls', 
-        'public-pagination-info', 
-        publicCurrentPage, 
-        totalItems, 
-        rowsPerPageLimit, 
-        'changePublicPage'
-    );
-}
-function renderEquipmentInventoryTable() {
-    // [โค้ดคัดแยกหรือสืบค้นประเภทหมวดหมู่อุปกรณ์เข้าคลังพัสดุเดิมของคุณ...]
-    // สมมติว่าอาเรย์ผลลัพธ์คลังครุภัณฑ์พัสดุชื่อ filteredEquipmentsData
-    
-    const totalItems = filteredEquipmentsData.length;
-    
-    // ✂️ ทำการตัดแถวข้อมูลให้เหลือแสดงผลเฉพาะช่วงหน้าปัจจุบัน หน้าละ 20 แถวถ้วน
-    const startIdx = (equipCurrentPage - 1) * rowsPerPageLimit;
-    const paginatedItems = filteredEquipmentsData.slice(startIdx, startIdx + rowsPerPageLimit);
-    
-    // รันลูปสร้างแถว <tr> ลงตารางจากก้อนข้อมูลสแนปช็อต paginatedItems แทนก้อนเดิม
-    // [โค้ดคำสั่ง .forEach วาดตารางครุภัณฑ์คลังพัสดุเดิมของคุณ...]
-
-    // 🖨️ สั่งวาดปุ่มและแถวรายละเอียดควบคุมการเปลี่ยนหน้าเพจคลังพัสดุท้ายตาราง
-    buildPaginationDashboardControls(
-        'equip-pagination-controls', 
-        'equip-pagination-info', 
-        equipCurrentPage, 
-        totalItems, 
-        rowsPerPageLimit, 
-        'changeEquipPage'
-    );
+    renderEquipmentTable(); // เรียกฟังก์ชันวาดตารางคลังพัสดุอีกครั้งพร้อมหน้าใหม่
 }
