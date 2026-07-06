@@ -293,63 +293,103 @@
         </footer>
     </div>
 
-    <div id="print-section" class="hidden print:block font-sarabun text-black bg-white p-8">
-        <div class="max-w-3xl mx-auto space-y-6" style="line-height: 1.8; font-size: 15px;">
-            <div class="text-center space-y-1.5">
-                <h2 class="text-lg font-bold">ใบทำเรื่องขออนุมัติยืมกายอุปกรณ์และเครื่องมือทางการแพทย์</h2>
-                <h3 id="print-agency-name" class="text-base font-semibold text-gray-800">ศูนย์กายอุปกรณ์ทางการแพทย์สาธารณสุข</h3>
+    <div id="print-section" class="hidden print:block print:w-full print:bg-white print:text-black">
+        <div style="max-width: 800px; margin: 0 auto; padding: 10px 20px; font-family: 'Sarabun', sans-serif; font-size: 15px; line-height: 1.5;">
+            
+            <div class="flex justify-center items-center mb-6">
+                <img id="print-logo" src="" alt="Logo" class="h-20 w-auto mr-20 object-contain" />
+                <div class="text-center">
+                    <h3 class="text-base font-bold mb-1 text-gray-700">แบบฟอร์มขอยืมอุปกรณ์เครื่องมือทางการแพทย์</h3>
+                    <h2 id="print-agency-name" class="text-xl font-bold leading-relaxed">
+                        กำลังโหลดข้อมูลหน่วยงาน...
+                    </h2>
+                </div>
             </div>
             
-            <div class="text-right">
-                <p class="font-medium">วันที่ทำสัญญาอนุมัติ: <span id="print-date" class="border-b border-dotted border-black px-4 font-bold inline-block min-w-[150px] text-center"></span></p>
+            <div class="text-right mb-4">
+                <p>วันที่ <span id="print-date" class="border-b border-dotted border-black inline-block w-40 text-center"></span></p>
             </div>
-
-            <div class="space-y-4 pt-2">
-                <div class="flex flex-wrap items-baseline gap-1.5">
-                    <span>ข้าพเจ้า (ผู้ยืมสัญญา/ญาติ) :</span>
-                    <span id="print-borrower" class="flex-1 border-b border-dotted border-black px-2 font-bold text-gray-900 text-center"></span>
-                    <span>เบอร์โทรศัพท์ติดต่อ :</span>
-                    <span id="print-phone" class="w-48 border-b border-dotted border-black px-2 font-mono font-bold text-center"></span>
+            
+            <div class="space-y-3">
+                <div class="flex items-baseline gap-2">
+                    <span class="whitespace-nowrap">ชื่อ - สกุลผู้ยืม :</span>
+                    <span id="print-borrower" class="flex-1 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">เบอร์โทร :</span>
+                    <span id="print-phone" class="w-40 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
                 </div>
                 
-                <div class="flex flex-wrap items-baseline gap-1.5">
-                    <span>มีความประสงค์ขอยืมอุปกรณ์เพื่อสนับสนุนให้แก่ผู้ป่วยชื่อ :</span>
-                    <span id="print-patient" class="flex-1 border-b border-dotted border-black px-2 font-bold text-gray-900 text-center"></span>
-                    <span>ความสัมพันธ์กับผู้ป่วย :</span>
-                    <span id="print-relation" class="w-36 border-b border-dotted border-black px-2 text-center"></span>
+                <div class="flex items-baseline gap-2">
+                    <span class="whitespace-nowrap">เพื่อให้ผู้ป่วยชื่อ :</span>
+                    <span id="print-patient" class="flex-1 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">ความสัมพันธ์กับผู้ป่วย :</span>
+                    <span id="print-relation" class="w-40 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                </div>
+                
+                <div class="flex items-baseline gap-2">
+                    <span class="whitespace-nowrap">ประเภทอุปกรณ์ที่ยืม :</span>
+                    <span id="print-equipment" class="flex-1 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">โดยมัดจำค่าอุปกรณ์ :</span>
+                    <span id="print-deposit" class="w-32 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">บาท</span>
                 </div>
 
-                <div class="flex flex-wrap items-baseline gap-1.5">
-                    <span>รายการพัสดุครุภัณฑ์ที่ขอยืม :</span>
-                    <span id="print-equipment" class="flex-1 border-b border-dotted border-black px-2 font-bold text-indigo-900 text-center"></span>
-                    <span>มูลค่าเงินมัดจำประกันสินค้า :</span>
-                    <span id="print-deposit" class="w-32 border-b border-dotted border-black px-2 font-bold text-center"></span>
-                    <span>บาท</span>
+                <div class="flex items-baseline gap-2 pt-1">
+                    <span class="whitespace-nowrap">มีกำหนดระยะเวลา ณ วันที่</span>
+                    <span id="print-start-date" class="flex-1 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">จนถึง วันที่</span>
+                    <span id="print-end-date" class="flex-1 border-b border-dotted border-black text-center text-blue-800 font-medium"></span>
+                    <span class="whitespace-nowrap">เป็นการสิ้นสุดคืนค่ามัดจำ</span>
                 </div>
-
-                <div class="flex flex-wrap items-baseline gap-1.5 pt-1">
-                    <span>กรอบระยะเวลาสัญญาเริ่มต้น ณ วันที่ :</span>
-                    <span id="print-start-date" class="flex-1 border-b border-dotted border-black px-2 text-center font-semibold"></span>
-                    <span>สิ้นสุดวันครบกำหนดส่งมอบคืนคลัง :</span>
-                    <span id="print-end-date" class="flex-1 border-b border-dotted border-black px-2 text-center font-bold text-red-600"></span>
+                
+                <div class="mt-4 space-y-2 text-justify leading-relaxed">
+                    <p class="indent-12">
+                        ข้าพเจ้ารับทราบว่า หากได้ยืมอุปกรณ์เกิน 6 เดือน จะมิได้เงินคืนค่ามัดจำอุปกรณ์ และหากไม่มีการนำส่งคืนภายในระยะเวลาที่กำหนด ยินยอมให้เจ้าหน้าที่ โทรติดตามสถานะการใช้งานได้ทุกๆ 3 เดือน จนกว่าจะมีการส่งคืนโดยเสร็จสมบูรณ์
+                    </p>
+                    <p class="indent-12">
+                        และข้าพเจ้าขอรับรองว่า จะดูแลรักษาอุปกรณ์ที่ยืมเป็นอย่างดี หากกรณีมีความเสียหายใดๆ หรือมีการสูญหายเกิดขึ้น ข้าพเจ้าจะขอรับผิดชอบทั้งหมดทุกกรณีโดยไม่มีเงื่อนไข
+                    </p>
+                    <p class="indent-12">
+                        กรณียืมถังออกซิเจนชนิดเติม เมื่อนำมาส่งคืน ข้าพเจ้าจะเติมออกซิเจนให้เต็ม โดยต้องได้รับการผนึกซิลจากร้านค้า เพื่อเป็นการยืนยันว่าออกซิเจนในถัง ได้รับการเติมจนเต็มถังเรียบร้อยแล้ว ซึ่งจะเป็นประโยชน์แก่ผู้รับบริการคนถัดไป ในต่อไปหลังจากนี้
+                    </p>
                 </div>
             </div>
 
-            <div class="text-xs space-y-3 text-gray-700 pt-4 leading-relaxed bg-gray-50/50 p-4 rounded-xl border border-dashed border-gray-300">
-                <p class="indent-12">**เงื่อนไขสำคัญที่ผู้ยืมยอมรับผูกพัน:** ผู้ขอยืมรับทราบว่าหากระยะเวลาการยืมเกินรอบ 6 เดือน เงินประกันมัดจำครุภัณฑ์จะถือว่าสละสิทธิ์เข้ากองทุนบำรุงรักษา และกรณีที่ไม่มีการนำส่งมอบคืนภายในกำหนด ยินยอมให้เจ้าหน้าที่โทรศัพท์ติดตามสถานะความคุ้มครองทุก ๆ 3 เดือน จนกว่าคลังพัสดุจะได้รับอุปกรณ์กลับคืนสู่สภาพปกติ</p>
-                <p class="indent-12">ข้าพเจ้าจะดูแลรักษาทรัพย์สินพัสดุแพทย์เสมือนเป็นของตนเอง หากมีความชำรุดเสียหายเกินกว่าเสื่อมสภาพปกติ หรือสูญหายเกิดขึ้น ข้าพเจ้ายินดีชดใช้ค่าเสียหายเต็มจำนวนทุกประการโดยไม่มีเงื่อนไขใด ๆ ทั้งสิ้น</p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-12 pt-14 text-center text-xs">
-                <div class="space-y-12">
-                    <p>ลงชื่อ ................................................................ ผู้ขอยืมสัญญา</p>
-                    <p class="font-medium">( <span id="print-sign-borrower" class="px-2"></span> )</p>
+            <div class="flex justify-between mt-8 text-center">
+                <div class="w-1/2">
+                    <p>ลงชื่อ ................................................. ผู้ยืม</p>
+                    <p class="mt-2">( <span id="print-sign-borrower" class="inline-block w-48 border-b border-dotted border-black text-blue-800"></span> )</p>
                 </div>
-                <div class="space-y-12">
-                    <p>ลงชื่อ ................................................................ เจ้าหน้าที่ผู้ตรวจสอบอนุมัติ</p>
-                    <p class="font-medium">( ........................................................................ )</p>
+                <div class="w-1/2">
+                    <p>ลงชื่อ ............................................ เจ้าหน้าที่ผู้ให้ยืม</p>
+                    <p class="mt-2">( <span id="print-sign-staff" class="inline-block w-48 border-b border-dotted border-black text-blue-800"></span> )</p>
                 </div>
             </div>
+            
+            <div class="text-center mt-6">
+                <p>ลงชื่อ ....................................................... พยาน</p>
+                <p class="mt-2">( ...................................................... )</p>
+            </div>
+            
+            <hr class="my-6 border-t-2 border-dashed border-gray-400">
+            
+            <h4 class="font-bold mb-3">ส่วนของการส่งคืนอุปกรณ์</h4>
+            <div class="flex justify-between text-sm">
+                <div class="w-1/2 text-left">
+                    <p><i class="fa-regular fa-square mr-2"></i> ส่งคืนอุปกรณ์ครบถ้วน</p>
+                    <p class="mt-2"><i class="fa-regular fa-square mr-2"></i> อุปกรณ์ชำรุด เนื่องจาก ...........................................</p>
+                    <div class="text-center mt-6">
+                        <p>ลงชื่อ ................................................... ผู้ส่งคืน</p>
+                        <p class="mt-2">( ...................................................... )</p>
+                        <p class="mt-2">วันที่คืน ....................................................</p>
+                    </div>
+                </div>
+                <div class="w-1/2 text-center mt-10">
+                    <p>ลงชื่อ ................................................. เจ้าหน้าที่ผู้รับคืน</p>
+                    <p class="mt-2">( ......................................................... )</p>
+                    <p class="mt-2">วันที่รับคืน ....................................................</p>
+                </div>
+            </div>
+            
         </div>
     </div>
 
