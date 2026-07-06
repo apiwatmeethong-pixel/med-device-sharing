@@ -369,9 +369,14 @@ function changeAdminPage(target) {
 
 // ✅ แก้ไขปัญหาปริ้นท์หลุดฟอร์แมต: ล็อกระดับ Body Class ปิดหน้าเว็บอื่นเพื่อพิมพ์ใบยืมแบบโบราณดั้งเดิมตามสัญญาจริง
 function printLoanReceipt(entryId) {
+    // 🔍 ค้นหาเรคคอร์ดแถวข้อมูลสัญญาใน State ด้วย EntryID หรือดัชนีแรก
     const row = state.data.find(r => (r.EntryID || r[0]) === entryId);
-    if (!row) return;
+    if (!row) {
+        Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลแถวสัญญานี้ในคลังระบบ', 'error');
+        return;
+    }
     
+    // 🗓️ ถอดค่าและจัดรูปแบบวันที่เริ่มต้นสัญญา และวันครบกำหนดส่งคืนรับประกันมัดจำ (บวก 6 เดือน)
     const rawDate = row.BorrowDate || row[9];
     const bDate = rawDate ? new Date(rawDate) : new Date();
     const dateFormatted = bDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -380,29 +385,65 @@ function printLoanReceipt(entryId) {
     dDate.setMonth(dDate.getMonth() + 6); // บวกกรอบสัญญาระยะเวลา 6 เดือนสากล
     const endDateFormatted = dDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
+    // 📦 ค้นหารหัสครุภัณฑ์และแมปข้อมูลชื่อรุ่นกายอุปกรณ์จากสต็อกพัสดุ
     const eqId = row.EquipmentID || row[5];
     const matchedEq = state.equipments.find(e => String(e.EquipmentID || e[0]).trim() === String(eqId).trim());
+    
+    // 📡 ดึงข้อมูลสัญญลักษณ์ Logo และชื่อต้นสังกัดจากแผ่นข้อมูลพับลิกส์ (Publics Sheet)
     const agencyText = state.publics.find(item => item['ประเภท'] === 'Agency' || item[0] === 'Agency');
+    const logoText = state.publics.find(item => item['ประเภท'] === 'Logo' || item[0] === 'Logo');
 
-    if (agencyText) {
+    // 🖼️ ดึงรูปตราสัญลักษณ์ของหน่วยงานมาผูกเข้ากับ Element โครงสร้างรูปภาพตัวใหม่
+    if (logoText && document.getElementById('print-logo')) {
+        document.getElementById('print-logo').src = logoText['ข้อมูล 1'] || logoText[1] || '';
+    }
+
+    // 🏢 จัดสายอักษรชื่อหน่วยงานเทศบาล/ศูนย์แพทย์ เว้นบรรทัดแบบยืดหยุ่นตามเวอร์ชัน 2.1 ดั้งเดิมของคุณ
+    if (agencyText && document.getElementById('print-agency-name')) {
         const title1 = agencyText['ข้อมูล 1'] || agencyText[1] || '';
         const title2 = agencyText['ข้อมูล 2'] || agencyText[2] || '';
         document.getElementById('print-agency-name').innerHTML = title2 ? `${title1}<br>${title2}` : title1;
     }
 
-    document.getElementById('print-borrower').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
-    document.getElementById('print-sign-borrower').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
-    document.getElementById('print-date').innerText = dateFormatted;
-    document.getElementById('print-equipment').innerText = matchedEq ? `${matchedEq[1] || matchedEq.EquipmentName} รหัส: ${matchedEq[0] || matchedEq.EquipmentID} (${matchedEq[2] || matchedEq.SerialNumber})` : eqId;
+    // ✍️ รันคำสั่งกระจายข้อมูลลงสู่แผ่น ID ในชุดแบบฟอร์มตัวใหม่ที่กำหนดสไตล์สีน้ำเงินเข้มและตัวหนา
+    if (document.getElementById('print-borrower')) {
+        document.getElementById('print-borrower').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
+    }
+    if (document.getElementById('print-sign-borrower')) {
+        document.getElementById('print-sign-borrower').innerText = row.BorrowerName || row.PatientName || row[1] || row[13] || '-';
+    }
+    if (document.getElementById('print-date')) {
+        document.getElementById('print-date').innerText = dateFormatted;
+    }
+    if (document.getElementById('print-equipment')) {
+        document.getElementById('print-equipment').innerText = matchedEq ? `${matchedEq[1] || matchedEq.EquipmentName} รหัส: ${matchedEq[0] || matchedEq.EquipmentID} (${matchedEq[2] || matchedEq.SerialNumber})` : eqId;
+    }
     
-    document.getElementById('print-start-date').innerText = dateFormatted;
-    document.getElementById('print-end-date').innerText = endDateFormatted;
-    document.getElementById('print-phone').innerText = row.Phone || row[12] || '-';
-    document.getElementById('print-patient').innerText = row.PatientName || row[13] || '-';
-    document.getElementById('print-relation').innerText = row.Relationship || row[14] || 'ตนเอง';
-    document.getElementById('print-deposit').innerText = row.Deposit || row[15] || '0';
+    if (document.getElementById('print-start-date')) {
+        document.getElementById('print-start-date').innerText = dateFormatted;
+    }
+    if (document.getElementById('print-end-date')) {
+        document.getElementById('print-end-date').innerText = endDateFormatted;
+    }
+    if (document.getElementById('print-phone')) {
+        document.getElementById('print-phone').innerText = row.Phone || row[12] || '-';
+    }
+    if (document.getElementById('print-patient')) {
+        document.getElementById('print-patient').innerText = row.PatientName || row[13] || '-';
+    }
+    if (document.getElementById('print-relation')) {
+        document.getElementById('print-relation').innerText = row.Relationship || row[14] || 'ตนเอง';
+    }
+    if (document.getElementById('print-deposit')) {
+        document.getElementById('print-deposit').innerText = row.Deposit || row[15] || '0';
+    }
+    
+    // 🔒 ระบบความปลอดภัยอัตโนมัติ: ดึงชื่อบัญชีแอดมินผู้ที่เข้าสู่ระบบพิมพ์ในขณะนั้นหยอดลงช่องเจ้าหน้าที่ผู้ให้ยืมทันที
+    if (document.getElementById('print-sign-staff')) {
+        document.getElementById('print-sign-staff').innerText = state.adminName || 'เจ้าหน้าที่ผู้มอบ';
+    }
 
-    // บังคับเปลี่ยนสถานะโครงสร้างสไตล์ชีตคุมเลย์เอาต์เฉพาะเครื่องปริ้นท์
+    // 🖨️ บังคับเปลี่ยนสถานะโครงสร้างสไตล์ชีตคุมเลย์เอาต์เฉพาะเครื่องปริ้นท์ตามระเบียบเวอร์ชัน 2.1 ดั้งเดิมของคุณ
     document.body.classList.add('print-mode-receipt');
     window.print();
     document.body.classList.remove('print-mode-receipt');
