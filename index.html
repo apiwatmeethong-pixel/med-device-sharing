@@ -546,6 +546,16 @@
         </div>
     </div>
 
+    <div id="modal-image-gallery" class="modal-backdrop">
+        <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-lg mx-4 animate-scale text-xs">
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><i class="fa-solid fa-images text-teal-600"></i> รูปภาพหลักฐานการยืม</h4>
+                <button onclick="closeImageGallery()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div id="image-gallery-body" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+        </div>
+    </div>
+
     <div id="modal-borrow" class="modal-backdrop">
         <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-scale text-xs">
             <div class="flex justify-between items-center mb-4">
@@ -623,6 +633,14 @@
                 <div>
                     <label class="block font-bold text-gray-500 mb-1">บันทึกรายละเอียดหมายเหตุเพิ่มเติม</label>
                     <textarea id="borrow-note" rows="1.5" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1.5">ถ่ายรูปหลักฐานการยืมอุปกรณ์ (สูงสุด 3 รูป)</label>
+                    <input type="file" id="borrow-photo-input" accept="image/*" capture="environment" class="hidden" onchange="handleBorrowPhotoSelect(event)" />
+                    <div id="borrow-photo-previews" class="grid grid-cols-3 gap-2 mb-2 hidden"></div>
+                    <button type="button" id="borrow-photo-trigger" onclick="document.getElementById('borrow-photo-input').click()" class="w-full border-2 border-dashed border-gray-200 hover:border-teal-300 hover:bg-teal-50/40 text-gray-400 hover:text-teal-600 rounded-xl py-3 flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-camera"></i> <span id="borrow-photo-trigger-label">ถ่ายรูปหลักฐาน (Max 3)</span>
+                    </button>
                 </div>
                 <div class="flex items-start gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100/40">
                     <input type="checkbox" id="borrow-pdpa-check" class="mt-0.5 rounded focus:ring-emerald-500 accent-emerald-600 h-4 w-4" required />

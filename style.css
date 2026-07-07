@@ -32,8 +32,8 @@ html[data-theme="dark"]{
   --app-text-soft:#7487a3;
 }
 
-html{ scroll-behavior:smooth; }
-body.font-sarabun{ font-family:'Sarabun', sans-serif; }
+html{ scroll-behavior:smooth; -webkit-tap-highlight-color:transparent; }
+body.font-sarabun{ font-family:'Sarabun', sans-serif; -webkit-tap-highlight-color:transparent; }
 
 /* ---------- scrollbars ---------- */
 ::-webkit-scrollbar{ width:8px; height:8px; }
@@ -118,6 +118,47 @@ body.font-sarabun{ font-family:'Sarabun', sans-serif; }
 /* ---------- theme toggle ---------- */
 .theme-toggle-btn i{ transition:transform .35s cubic-bezier(.34,1.56,.64,1); }
 .theme-toggle-btn:hover i{ transform:rotate(20deg) scale(1.1); }
+
+/* ---------- ป้องกันการลากเลือกข้อความบนปุ่ม/เมนู (ทำให้เกิดแถบไฮไลต์สีทับปุ่มตอนคลิก/แตะค้างบนมือถือ) ---------- */
+button, .menu-item, [onclick], a.button-like{
+  user-select:none;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  -webkit-touch-callout:none;      /* ปิดเมนู callout ค้างแตะบน iOS ที่ทำให้ขึ้นแถบเลือกคำสีฟ้าทับปุ่ม */
+  -webkit-tap-highlight-color:transparent;  /* ปิดแถบไฮไลต์สีทึบเวลาแตะปุ่มบนมือถือ (ต้นเหตุปุ่มดูเหมือนสีทับกันมองไม่เห็น) */
+  tap-highlight-color:transparent;
+  touch-action:manipulation;        /* ลดดีเลย์และการแตะซ้อนที่ทำให้เกิดการเลือกข้อความโดยไม่ตั้งใจ */
+  outline:none;
+}
+button:focus-visible, .menu-item:focus-visible{
+  outline:2px solid rgba(79,70,229,.5);
+  outline-offset:2px;
+}
+
+/* ---------- รูปภาพหลักฐานแนบในฟอร์มยืม ---------- */
+.photo-preview-item{
+  position:relative;
+  aspect-ratio:1/1;
+  border-radius:.75rem;
+  overflow:hidden;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+}
+.photo-preview-item img{ width:100%; height:100%; object-fit:cover; display:block; }
+.photo-preview-remove{
+  position:absolute; top:4px; right:4px;
+  width:20px; height:20px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(15,23,42,.75); color:#fff;
+  border-radius:99px; font-size:11px; line-height:1;
+  cursor:pointer; transition:background .15s ease;
+}
+.photo-preview-remove:hover{ background:#e11d48; }
+.gallery-photo-item{
+  border-radius:.75rem; overflow:hidden; border:1px solid #e2e8f0; aspect-ratio:1/1;
+}
+.gallery-photo-item img{ width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
 
 /* ---------- signature element: usage allocation bar ---------- */
 .usage-bar-track{
