@@ -3,7 +3,7 @@
  * พัฒนาโดย: ศบส.บ้านโทกหัวช้าง (James)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxERwiPD6tyzSpZMs9P1SITIYMbm_3ildTzexALzyXa9aKDtLxpwYXDPFxz8Rzfih4LIA/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbwXfXkULAz2wLtbtsK14jM43Zr2t82h4Sex0NsPe4qyf-3g5YHWm5g5mjlkVUGQakzOCw/exec"; 
 
 const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
 
@@ -51,10 +51,47 @@ async function run(action, payload = {}) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    initThemeMode();
     checkAuthSession();
     await loadSystemData();
     document.getElementById('borrow-date').valueAsDate = new Date();
 });
+
+// 🌗 ระบบสลับโหมดมืด/สว่าง (Dark / Light Mode) พร้อมจดจำค่าที่เลือกไว้ล่าสุด
+function initThemeMode() {
+    const saved = localStorage.getItem('themeMode');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const mode = saved || (prefersDark ? 'dark' : 'light');
+    applyThemeMode(mode);
+}
+
+function applyThemeMode(mode) {
+    document.documentElement.setAttribute('data-theme', mode);
+    localStorage.setItem('themeMode', mode);
+    const icon = document.getElementById('theme-toggle-icon');
+    if (icon) icon.className = mode === 'dark' ? 'fa-solid fa-sun text-sm' : 'fa-solid fa-moon text-sm';
+}
+
+function toggleThemeMode() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    applyThemeMode(current === 'dark' ? 'light' : 'dark');
+}
+
+// 🔧 สั่งให้เซิร์ฟเวอร์ซ่อมแซมสถานะครุภัณฑ์ในชีต Equipments ให้ตรงกับ BorrowLog จริงเสมอ
+async function runEquipmentStatusSync() {
+    Swal.fire({ title: 'กำลังตรวจสอบและซิงค์สถานะคลังพัสดุ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    try {
+        const res = await run('syncEquipmentStatus', {});
+        if (res.success) {
+            Swal.fire('ซิงค์สถานะสำเร็จ', `ปรับปรุงข้อมูล ${res.updatedCount} รายการ (กำลังยืม ${res.totalBorrowed} จากทั้งหมด ${res.totalEquipments} ชิ้น)`, 'success');
+            await loadSystemData();
+        } else {
+            Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดระหว่างซิงค์สถานะ', 'error');
+        }
+    } catch (e) {
+        Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    }
+}
 
 function checkAuthSession() {
     if (localStorage.getItem('adminToken')) {
@@ -148,6 +185,23 @@ function getActiveBorrows() {
     });
 }
 
+// ✅ คำนวณสถานะครุภัณฑ์จริงจากรายการยืม-คืน (BorrowLog) แทนการเชื่อค่า Status ในชีต Equipments ตรงๆ
+// ป้องกันปัญหาข้อมูลไม่ตรงกัน (เช่น นำเข้าข้อมูลยืมเดิมโดยไม่ผ่าน API ทำให้ Equipments.Status ค้างเป็น Available)
+function getBorrowedEquipmentIdSet() {
+    const set = new Set();
+    getActiveBorrows().forEach(r => {
+        const eqId = String(r.EquipmentID || r[5] || '').trim();
+        if (eqId) set.add(eqId);
+    });
+    return set;
+}
+
+function getEquipmentStatus(eq, borrowedSet) {
+    const eqId = String(eq.EquipmentID || eq[0] || '').trim();
+    const set = borrowedSet || getBorrowedEquipmentIdSet();
+    return set.has(eqId) ? 'Borrowed' : 'Available';
+}
+
 // ตรวจสอบว่ารายการยืมเกินกำหนดสัญญา 6 เดือนแล้วหรือยัง
 function isOverdueBorrow(row) {
     const rawDate = row.BorrowDate || row[9];
@@ -220,6 +274,26 @@ function updateSidebarBorrowBadge(borrowedCount) {
     }
 }
 
+// 🎨 ตารางจับคู่หมวดหมู่อุปกรณ์ -> ไอคอน และโทนสี (พาสเทลอ่อนบนการ์ด + วงไอคอนสีเข้มสด โดดเด่นสะดุดตา)
+const CATEGORY_VISUALS = [
+    { test: n => n.includes('เตียง'), icon: 'fa-bed', hue: 'indigo' },
+    { test: n => n.includes('ที่นอน'), icon: 'fa-wind', hue: 'teal' },
+    { test: n => n.includes('รถนอน') || n.includes('เปลเข็น'), icon: 'fa-bed-pulse', hue: 'fuchsia' },
+    { test: n => n.includes('เครื่องผลิตออกซิเจน'), icon: 'fa-lungs', hue: 'sky' },
+    { test: n => n.includes('ออกซิเจน'), icon: 'fa-fire-extinguisher', hue: 'cyan' },
+    { test: n => n.includes('ดูดเสมหะ'), icon: 'fa-pump-medical', hue: 'rose' },
+    { test: n => n.includes('รถเข็น'), icon: 'fa-wheelchair', hue: 'amber' },
+    { test: n => n.includes('วอคเกอร์'), icon: 'fa-person-walking-with-cane', hue: 'purple' },
+    { test: n => n.includes('ไม้ค้ำ'), icon: 'fa-crutch', hue: 'violet' },
+    { test: n => n.includes('ไม้เท้า'), icon: 'fa-crutch', hue: 'orange' },
+    { test: n => n.toLowerCase().includes('dtx') || n.includes('เจาะน้ำตาล'), icon: 'fa-droplet', hue: 'red' },
+];
+
+function getCategoryVisual(name) {
+    const match = CATEGORY_VISUALS.find(r => r.test(name));
+    return { icon: match ? match.icon : 'fa-kit-medical', hue: match ? match.hue : 'blue' };
+}
+
 function renderEquipmentTypeGrid() {
     const grid = document.getElementById('equipment-type-grid');
     if (!grid) return;
@@ -233,10 +307,7 @@ function renderEquipmentTypeGrid() {
         groups[name].total++;
     });
     
-    const activeBorrows = state.data.filter(r => {
-        const status = r.Status || r[8];
-        return status === 'Borrowed' || status === 'ยืม';
-    });
+    const activeBorrows = getActiveBorrows();
     
     activeBorrows.forEach(r => {
         const borrowEqId = String(r.EquipmentID || r[5]).trim();
@@ -251,21 +322,22 @@ function renderEquipmentTypeGrid() {
     for (let name in groups) {
         groups[name].available = groups[name].total - groups[name].borrowed;
     }
+
+    if (Object.keys(groups).length === 0) {
+        grid.innerHTML = `<div class="col-span-full empty-state"><i class="fa-solid fa-box-open text-3xl"></i><span>ยังไม่มีข้อมูลครุภัณฑ์ในคลัง</span></div>`;
+        return;
+    }
     
     for (let name in groups) {
-        let icon = 'fa-kit-medical', colorTheme = 'bg-blue-50/70 border-blue-100/60 text-blue-700', iconBg = 'text-blue-500';
-        if (name.includes('เตียง')) { icon = 'fa-bed'; colorTheme = 'bg-indigo-50/70 border-indigo-100/60 text-indigo-700'; iconBg = 'text-indigo-500'; }
-        else if (name.includes('ที่นอน')) { icon = 'fa-wind'; colorTheme = 'bg-teal-50/70 border-teal-100/60 text-teal-700'; iconBg = 'text-teal-500'; }
-        else if (name.includes('รถเข็น') || name.includes('รถนอน')) { icon = 'fa-wheelchair'; colorTheme = 'bg-amber-50/70 border-amber-100/60 text-amber-700'; iconBg = 'text-amber-500'; }
-        else if (name.includes('ออกซิเจน')) { icon = 'fa-lungs'; colorTheme = 'bg-sky-50/70 border-sky-100/60 text-sky-700'; iconBg = 'text-sky-500'; }
-        else if (name.includes('วอคเกอร์') || name.includes('ไม้ค้ำ')) { icon = 'fa-crutches'; colorTheme = 'bg-purple-50/70 border-purple-100/60 text-purple-700'; iconBg = 'text-purple-500'; }
-        
+        const { icon, hue } = getCategoryVisual(name);
         const g = groups[name];
         const card = document.createElement('div');
-        card.className = `${colorTheme} border p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all hover:scale-[1.01]`;
+        card.className = `cat-card bg-${hue}-50/70 border-${hue}-100/60 text-${hue}-700 border p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all hover:scale-[1.02] hover:shadow-lg`;
         card.innerHTML = `
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="p-2.5 rounded-xl bg-white shadow-sm flex-shrink-0 ${iconBg}"><i class="fa-solid ${icon} text-lg"></i></div>
+                <div class="cat-badge w-12 h-12 flex items-center justify-center rounded-2xl bg-${hue}-500 text-white shadow-lg ring-4 ring-${hue}-200/60 flex-shrink-0">
+                    <i class="fa-solid ${icon} text-xl"></i>
+                </div>
                 <div class="overflow-hidden">
                     <h5 class="font-bold text-xs text-gray-700 truncate">${name}</h5>
                     <p class="text-[11px] text-gray-500 mt-0.5">ทั้งหมด: ${g.total} | คงเหลือว่าง: <span class="text-emerald-600 font-bold">${g.available}</span></p>
@@ -622,10 +694,10 @@ function renderEquipmentTable() {
     const statusFilterEl = document.getElementById('equip-status-filter');
     const keyword = searchBox ? searchBox.value.toLowerCase().trim() : '';
     const statusFilter = statusFilterEl ? statusFilterEl.value : 'all';
+    const borrowedSet = getBorrowedEquipmentIdSet();
 
     const filtered = state.equipments.filter(item => {
-        const status = String(item.Status || item[3] || '').trim();
-        const isAvailable = (status === 'Available' || status === 'ว่าง');
+        const isAvailable = getEquipmentStatus(item, borrowedSet) === 'Available';
 
         let statusMatch = true;
         if (statusFilter === 'available') statusMatch = isAvailable;
@@ -654,8 +726,8 @@ function renderEquipmentTable() {
         pageItems.forEach(item => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-gray-50/70 transition-all duration-100";
-            const status = item.Status || item[3];
-            let statusBadge = (status === 'Available' || status === 'ว่าง') ?
+            const status = getEquipmentStatus(item, borrowedSet);
+            let statusBadge = (status === 'Available') ?
                 `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"><i class="fa-solid fa-check-circle mr-1"></i>ว่างพร้อมใช้</span>` :
                 `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100"><i class="fa-solid fa-handshake mr-1"></i>ถูกยืมไปคลัง</span>`;
 
@@ -687,10 +759,8 @@ function populateFormSelectors() {
     if (!selectEq) return;
     selectEq.innerHTML = '<option value="">-- กรุณาเลือกรายการอุปกรณ์พัสดุ --</option>';
     
-    const availableEqs = state.equipments.filter(e => {
-        const s = e.Status || e[3];
-        return s === 'Available' || s === 'ว่าง';
-    });
+    const borrowedSet = getBorrowedEquipmentIdSet();
+    const availableEqs = state.equipments.filter(e => getEquipmentStatus(e, borrowedSet) === 'Available');
     availableEqs.forEach(e => {
         const opt = document.createElement('option');
         opt.value = e.EquipmentID || e[0];

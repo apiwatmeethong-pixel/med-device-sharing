@@ -77,6 +77,9 @@
             </div>
             
             <div class="flex items-center gap-3">
+                <button id="theme-toggle-btn" onclick="toggleThemeMode()" title="สลับโหมดมืด/สว่าง" class="theme-toggle-btn text-gray-500 hover:bg-gray-100 w-9 h-9 flex items-center justify-center rounded-xl transition flex-shrink-0">
+                    <i id="theme-toggle-icon" class="fa-solid fa-moon text-sm"></i>
+                </button>
                 <div id="pdpa-badge" class="hidden md:flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100/40">
                     <i class="fa-solid fa-shield-halved text-sm text-emerald-500"></i> มาตรฐานความปลอดภัยข้อมูล PDPA
                 </div>
@@ -239,6 +242,9 @@
                         <p class="text-xs text-gray-400">ตรวจสอบและเพิ่มจำนวนรายการสิ่งของสนับสนุนเตียง รถเข็น หรือเครื่องผลิตออกซิเจน</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button onclick="runEquipmentStatusSync()" title="ตรวจสอบและซ่อมสถานะครุภัณฑ์ให้ตรงกับรายการยืม-คืนล่าสุด" class="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 border border-sky-200/40">
+                            <i class="fa-solid fa-arrows-rotate"></i> ซิงค์สถานะคลังพัสดุ
+                        </button>
                         <button onclick="exportToCSV('Equipments')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 border border-emerald-200/30">
                             <i class="fa-solid fa-file-excel"></i> ส่งออกข้อมูลคลัง
                         </button>
@@ -332,7 +338,7 @@
         </main>
 
         <footer class="bg-white border-t border-gray-100 py-3 px-6 text-center text-[11px] text-gray-400 font-medium mt-auto print:hidden">
-            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.3 | พัฒนาโดย ศบส.บ้านโทกหัวช้าง (James)</div>
+            <div>© 2026 ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.4 | Design & Developed by Apiwat Meethong</div>
         </footer>
     </div>
 
