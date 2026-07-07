@@ -42,6 +42,11 @@
                     <i class="fa-solid fa-wheelchair text-lg text-amber-500 w-6 text-center"></i> 
                     <span class="menu-text transition-all duration-200">คลังกายอุปกรณ์</span>
                 </button>
+                <button onclick="switchTab('tracking')" id="btn-menu-tracking" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-clipboard-list text-lg text-orange-500 w-6 text-center"></i> 
+                    <span class="menu-text transition-all duration-200">รายงานติดตามอุปกรณ์</span>
+                    <span id="menu-badge-tracking" class="menu-badge hidden">0</span>
+                </button>
                 <button onclick="switchTab('map')" id="btn-menu-map" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
                     <i class="fa-solid fa-map-location-dot text-lg text-rose-500 w-6 text-center"></i> 
                     <span class="menu-text transition-all duration-200">แผนที่พิกัดผู้ยืม (GPS)</span>
@@ -205,8 +210,8 @@
                         <p class="text-xs text-gray-400">สร้างฟอร์มใบคำขอยืม หรือทำเรื่องส่งมอบเครื่องมือทางการแพทย์กลับคืนคลัง</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="openTrackingReport()" class="bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 shadow-sm transition flex items-center gap-2">
-                        <i class="fa-solid fa-print"></i> รายงานติดตามสถานะ
+                        <button onclick="switchTab('tracking')" class="bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list"></i> รายงานติดตามสถานะ
 </button>
 
 <button onclick="openBorrowModal()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.03] flex items-center gap-2">
@@ -288,6 +293,60 @@
     <span id="equip-pagination-info">กำลังคำนวณจำนวนครุภัณฑ์รวม...</span>
     <div class="flex items-center gap-1.5" id="equip-pagination-controls"></div>
 </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-tracking" class="app-view space-y-6 hidden">
+                <div class="flex justify-between items-center print:hidden">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800">รายงานสถานะและประวัติการติดตามกายอุปกรณ์ทางการแพทย์</h3>
+                        <p class="text-xs text-gray-400">ตรวจสอบรายการที่กำลังถูกยืมใช้งานอยู่ทั้งหมด และไล่ติดตามรายการที่เกินกำหนดคืน 6 เดือน</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="printTrackingReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl shadow text-xs font-semibold transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-print"></i> พิมพ์รายงานตาราง
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col md:flex-row gap-3 items-center justify-between print:hidden">
+                    <div class="relative w-full md:w-80">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                        <input type="text" id="search-tracking-table" oninput="trackingCurrentPage=1; renderTrackingSection();" placeholder="ค้นหารหัสพัสดุ, ชื่อผู้ยืม/ผู้ป่วย, เบอร์โทร..." class="border border-gray-200 pl-9 pr-3 py-2 rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    </div>
+                    <select id="tracking-status-filter" onchange="trackingCurrentPage=1; renderTrackingSection();" class="border border-gray-200 px-3 py-2 rounded-xl bg-white text-xs w-full md:w-56 focus:outline-none">
+                        <option value="all">📁 แสดงทั้งหมด</option>
+                        <option value="overdue">⚠️ เฉพาะรายการเกินกำหนด</option>
+                        <option value="normal">🟢 เฉพาะรายการปกติ</option>
+                    </select>
+                </div>
+
+                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden p-5">
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-center border-collapse table-report">
+                            <thead>
+                                <tr class="text-gray-700 font-bold bg-slate-100 text-[11px]">
+                                    <th class="border border-gray-200 p-2">รหัสพัสดุ</th>
+                                    <th class="border border-gray-200 p-2 text-left">ชื่อผู้ป่วย/ผู้ขอยืม</th>
+                                    <th class="border border-gray-200 p-2">สถานะสัญญารวม</th>
+                                    <th class="border border-gray-200 p-2">ระยะเวลาสัญญารวม</th>
+                                    <th class="border border-gray-200 p-2">วันที่เริ่มยืม</th>
+                                    <th class="border border-gray-200 p-2 text-red-600">วันครบกำหนด (6 เดือน)</th>
+                                    <th class="border border-gray-200 p-2">เบอร์โทรสำหรับติดตาม</th>
+                                    <th class="border border-gray-200 p-2">สถานะการส่งสัญญาณ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tracking-table-body" class="bg-white divide-y divide-gray-100 text-gray-600">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-gray-50/70 px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs font-medium text-gray-500 rounded-b-2xl mt-0">
+                        <div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                            <span id="tracking-summary-info">กำลังคำนวณรายการสัญญารวม...</span>
+                            <span id="tracking-pagination-info" class="text-gray-400 before:content-['•'] before:mr-3 before:hidden sm:before:inline"></span>
+                        </div>
+                        <div class="flex items-center gap-1.5" id="tracking-pagination-controls"></div>
                     </div>
                 </div>
             </section>
@@ -460,41 +519,6 @@
             <tbody id="tracking-print-body">
                 </tbody>
         </table>
-    </div>
-
-    <div id="tracking-modal" class="modal-backdrop">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col overflow-hidden mx-4 animate-scale text-xs">
-            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <h2 class="text-sm font-bold text-indigo-700 flex items-center gap-2"><i class="fa-solid fa-clipboard-list"></i> รายงานสถานะและประวัติการติดตามกายอุปกรณ์ทางการแพทย์</h2>
-                <div class="flex gap-2">
-                    <button onclick="printTrackingReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl shadow text-xs font-semibold transition-colors flex items-center gap-1.5">
-                        <i class="fa-solid fa-print"></i> พิมพ์รายงานตาราง
-                    </button>
-                    <button onclick="closeTrackingReport()" class="text-gray-400 hover:bg-gray-100 p-2 rounded-xl"><i class="fa-solid fa-times text-base"></i></button>
-                </div>
-            </div>
-            <div class="p-4 overflow-auto flex-1">
-                <table class="w-full text-center border-collapse border border-gray-200">
-                    <thead>
-                        <tr class="text-gray-700 font-bold bg-slate-100 text-[11px]">
-                            <th class="border border-gray-200 p-2">รหัสพัสดุ</th>
-                            <th class="border border-gray-200 p-2 text-left">ชื่อผู้ป่วย/ผู้ขอยืม</th>
-                            <th class="border border-gray-200 p-2">สถานะสัญญารวม</th>
-                            <th class="border border-gray-200 p-2">ระยะเวลาสัญญารวม</th>
-                            <th class="border border-gray-200 p-2">วันที่เริ่มยืม</th>
-                            <th class="border border-gray-200 p-2 text-red-600">วันครบกำหนด (6 เดือน)</th>
-                            <th class="border border-gray-200 p-2">เบอร์โทรสำหรับติดตาม</th>
-                            <th class="border border-gray-200 p-2">สถานะการส่งสัญญาณ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tracking-table-body" class="bg-white divide-y divide-gray-100 text-gray-600">
-                        </tbody>
-                </table>
-                <div class="bg-gray-50/70 px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2 text-xs font-medium text-gray-500 rounded-b-2xl">
-                    <span id="tracking-summary-info">กำลังคำนวณรายการสัญญารวม...</span>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div id="modal-login" class="modal-backdrop">

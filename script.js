@@ -19,6 +19,7 @@ let state = {
 // ตัวแปรควบคุมระบบการแบ่งหน้าแสดงผลทั้ง 3 ส่วนหลัก (หน้าละ 20 แถว)
 let publicCurrentPage = 1;
 let equipCurrentPage = 1;
+let trackingCurrentPage = 1;
 const rowsPerPageLimit = 20; // ล็อกเป้าหมายการแสดงผลไว้ที่หน้าละ 20 แถวถ้วนตามกำหนด
 // ตัวแปรควบคุมระบบการแบ่งหน้าแสดงผลพาร์ทแอดมิน (Pagination States)
 let adminCurrentPage = 1;
@@ -230,6 +231,7 @@ function renderDashboardStats() {
 
     renderUsageAllocationBar(totalEq, availableCount >= 0 ? availableCount : 0, borrowedCount, overdueCount);
     updateSidebarBorrowBadge(borrowedCount);
+    updateSidebarTrackingBadge(overdueCount);
 }
 
 // 🎯 วาดแถบสัดส่วนสถานะการใช้งานครุภัณฑ์ (สรุปยืม-คืน หักลบ แบบเห็นภาพรวมทันที)
@@ -625,25 +627,57 @@ function printLoanReceipt(entryId) {
     document.body.classList.remove('print-mode-receipt');
 }
 
-function openTrackingReport() {
+// 🗃️ แคชรายการติดตามที่ผ่านการค้นหา/กรองล่าสุด ใช้ทั้งแสดงผลแบ่งหน้าบนจอ และพิมพ์รายงานฉบับเต็มทุกรายการ
+let trackingFilteredCache = [];
+
+function buildTrackingRows(rows) {
+    if (rows.length === 0) {
+        return `<tr><td colspan="8" class="text-center p-6 text-gray-400">🎉 ไม่มีรายการกายอุปกรณ์ค้างส่งคืนตรงกับเงื่อนไขที่ค้นหา</td></tr>`;
+    }
+    return rows.map(item => {
+        const { eqId, borrowerDetails, borrowDateStr, dueDateStr, phone, overdue } = item;
+        const signalBadge = overdue
+            ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200">⚠️ เกินกำหนด</span>`
+            : `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">ปกติ</span>`;
+        return `
+            <tr class="hover:bg-gray-50/70 transition ${overdue ? 'bg-rose-50/30' : ''}">
+                <td class="border border-gray-200 p-2 font-semibold text-orange-600">${eqId}</td>
+                <td class="border border-gray-200 p-2 text-left">${borrowerDetails}</td>
+                <td class="border border-gray-200 p-2 text-gray-500">กำลังยืมใช้งาน</td>
+                <td class="border border-gray-200 p-2">6 เดือน</td>
+                <td class="border border-gray-200 p-2 text-emerald-600">${borrowDateStr}</td>
+                <td class="border border-gray-200 p-2 font-bold text-rose-600 bg-rose-50/40">${dueDateStr}</td>
+                <td class="border border-gray-200 p-2 font-mono">${phone}</td>
+                <td class="border border-gray-200 p-2">${signalBadge}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 📋 คำนวณและเรนเดอร์หน้ารายงานสถานะ/ติดตามอุปกรณ์ (พร้อมค้นหา กรองสถานะ และแบ่งหน้าเมื่อเกิน 20 รายการ)
+function renderTrackingSection() {
+    const tbody = document.getElementById('tracking-table-body');
+    if (!tbody) return;
+
+    const searchBox = document.getElementById('search-tracking-table');
+    const statusFilterEl = document.getElementById('tracking-status-filter');
+    const keyword = searchBox ? searchBox.value.toLowerCase().trim() : '';
+    const statusFilter = statusFilterEl ? statusFilterEl.value : 'all';
+
     const borrowedItems = getActiveBorrows();
-    let html = '';
     let overdueTally = 0;
 
-    borrowedItems.forEach(row => {
+    const enriched = borrowedItems.map(row => {
         const eqId = row.EquipmentID || row[5];
-        const eq = state.equipments.find(e => e.EquipmentID === eqId || e[0] === eqId);
-        const eqName = eq ? (eq.EquipmentName || eq[1]) : eqId;
         const patient = row.PatientName || row.BorrowerName || row[13] || row[1];
         const address = row.Address || row[3] || '';
         const community = row.Community || row[4] || '';
-        const borrowerDetails = `${patient} (${address} เขต ${community})`;
-
-        let borrowDateStr = '-';
-        let dueDateStr = '-';
-        const rawDate = row.BorrowDate || row[9];
+        const phone = row.Phone || row[12] || '-';
         const overdue = isOverdueBorrow(row);
         if (overdue) overdueTally++;
+
+        let borrowDateStr = '-', dueDateStr = '-';
+        const rawDate = row.BorrowDate || row[9];
         if (rawDate) {
             const bDate = new Date(rawDate);
             borrowDateStr = bDate.toLocaleDateString('th-TH');
@@ -652,42 +686,68 @@ function openTrackingReport() {
             dueDateStr = dDate.toLocaleDateString('th-TH');
         }
 
-        const signalBadge = overdue
-            ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200">⚠️ เกินกำหนด</span>`
-            : `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">ปกติ</span>`;
-
-        html += `
-            <tr class="hover:bg-gray-50/70 transition ${overdue ? 'bg-rose-50/30' : ''}">
-                <td class="border border-gray-200 p-2 font-semibold text-orange-600">${eqId}</td>
-                <td class="border border-gray-200 p-2 text-left">${borrowerDetails}</td>
-                <td class="border border-gray-200 p-2 text-gray-500">กำลังยืมใช้งาน</td>
-                <td class="border border-gray-200 p-2">6 เดือน</td>
-                <td class="border border-gray-200 p-2 text-emerald-600">${borrowDateStr}</td>
-                <td class="border border-gray-200 p-2 font-bold text-rose-600 bg-rose-50/40">${dueDateStr}</td>
-                <td class="border border-gray-200 p-2 font-mono">${row.Phone || row[12] || '-'}</td>
-                <td class="border border-gray-200 p-2">${signalBadge}</td>
-            </tr>
-        `;
+        return {
+            eqId,
+            borrowerDetails: `${patient} (${address} เขต ${community})`,
+            searchBlob: `${eqId} ${patient} ${phone}`.toLowerCase(),
+            borrowDateStr, dueDateStr, phone, overdue
+        };
     });
 
-    if (borrowedItems.length === 0) {
-        html = `<tr><td colspan="8" class="text-center p-6 text-gray-400">🎉 ไม่มีรายการกายอุปกรณ์ค้างส่งคืนในขณะนี้</td></tr>`;
-    }
+    const filtered = enriched.filter(item => {
+        if (statusFilter === 'overdue' && !item.overdue) return false;
+        if (statusFilter === 'normal' && item.overdue) return false;
+        if (!keyword) return true;
+        return item.searchBlob.includes(keyword);
+    });
 
-    document.getElementById('tracking-table-body').innerHTML = html;
+    trackingFilteredCache = filtered;
+
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / rowsPerPageLimit) || 1;
+    if (trackingCurrentPage > totalPages) trackingCurrentPage = totalPages;
+    const startIdx = (trackingCurrentPage - 1) * rowsPerPageLimit;
+    const pageItems = filtered.slice(startIdx, startIdx + rowsPerPageLimit);
+
+    tbody.innerHTML = buildTrackingRows(pageItems);
+
     const summaryEl = document.getElementById('tracking-summary-info');
     if (summaryEl) {
-        summaryEl.innerText = `รายการค้างส่งคืนทั้งหมด ${borrowedItems.length} รายการ (เกินกำหนด ${overdueTally} รายการ)`;
+        summaryEl.innerText = `รายการค้างส่งคืนทั้งหมด ${borrowedItems.length} รายการ (เกินกำหนด ${overdueTally} รายการ)${keyword || statusFilter !== 'all' ? ` — ตรงเงื่อนไข ${totalItems} รายการ` : ''}`;
     }
-    document.getElementById('tracking-modal').classList.add('active');
+
+    buildPaginationDashboardControls(
+        'tracking-pagination-controls',
+        'tracking-pagination-info',
+        trackingCurrentPage,
+        totalItems,
+        rowsPerPageLimit,
+        'changeTrackingPage'
+    );
+
+    updateSidebarTrackingBadge(overdueTally);
 }
 
-function closeTrackingReport() {
-    document.getElementById('tracking-modal').classList.remove('active');
+function changeTrackingPage(targetPage) {
+    trackingCurrentPage = targetPage;
+    renderTrackingSection();
+}
+
+// 🔔 อัปเดตตัวเลขแจ้งเตือนจำนวนรายการเกินกำหนดคืนบนเมนูข้างซ้าย
+function updateSidebarTrackingBadge(overdueTally) {
+    const badge = document.getElementById('menu-badge-tracking');
+    if (!badge) return;
+    if (overdueTally > 0) {
+        badge.innerText = overdueTally;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
 }
 
 function printTrackingReport() {
-    document.getElementById('tracking-print-body').innerHTML = document.getElementById('tracking-table-body').innerHTML;
+    // พิมพ์รายงานตามรายการที่ผ่านการค้นหา/กรองล่าสุดทั้งหมด (ไม่จำกัดเฉพาะหน้าที่กำลังแสดงอยู่บนจอ)
+    document.getElementById('tracking-print-body').innerHTML = buildTrackingRows(trackingFilteredCache);
     document.body.classList.add('print-mode-tracking');
     window.print();
     document.body.classList.remove('print-mode-tracking');
@@ -811,6 +871,9 @@ function switchTab(tabId) {
 
     if (tabId === 'map') {
         setTimeout(() => { initLeafletGISMap(); }, 200);
+    }
+    if (tabId === 'tracking') {
+        renderTrackingSection();
     }
 }
 
