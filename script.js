@@ -275,23 +275,27 @@ function updateSidebarBorrowBadge(borrowedCount) {
 }
 
 // 🎨 ตารางจับคู่หมวดหมู่อุปกรณ์ -> ไอคอน และโทนสี (พาสเทลอ่อนบนการ์ด + วงไอคอนสีเข้มสด โดดเด่นสะดุดตา)
+// หมายเหตุ: ใช้ค่าสี HEX ตรงๆ (ไม่พึ่งคลาส Tailwind ที่สร้างจากตัวแปรแบบ bg-${hue}-500) เพราะ Tailwind CDN
+// ไม่สามารถ generate คลาสที่ประกอบขึ้นจากตัวแปร JS ได้ครบทุกเฉดสี ทำให้ไอคอนบางหมวดไม่ขึ้นพื้นหลัง (โชว์เป็นวงว่างสีขาว)
 const CATEGORY_VISUALS = [
-    { test: n => n.includes('เตียง'), icon: 'fa-bed', hue: 'indigo' },
-    { test: n => n.includes('ที่นอน'), icon: 'fa-wind', hue: 'teal' },
-    { test: n => n.includes('รถนอน') || n.includes('เปลเข็น'), icon: 'fa-bed-pulse', hue: 'fuchsia' },
-    { test: n => n.includes('เครื่องผลิตออกซิเจน'), icon: 'fa-lungs', hue: 'sky' },
-    { test: n => n.includes('ออกซิเจน'), icon: 'fa-fire-extinguisher', hue: 'cyan' },
-    { test: n => n.includes('ดูดเสมหะ'), icon: 'fa-pump-medical', hue: 'rose' },
-    { test: n => n.includes('รถเข็น'), icon: 'fa-wheelchair', hue: 'amber' },
-    { test: n => n.includes('วอคเกอร์'), icon: 'fa-person-walking-with-cane', hue: 'purple' },
-    { test: n => n.includes('ไม้ค้ำ'), icon: 'fa-crutch', hue: 'violet' },
-    { test: n => n.includes('ไม้เท้า'), icon: 'fa-crutch', hue: 'orange' },
-    { test: n => n.toLowerCase().includes('dtx') || n.includes('เจาะน้ำตาล'), icon: 'fa-droplet', hue: 'red' },
+    { test: n => n.includes('เตียง'), icon: 'fa-bed', solid: '#6366f1', pastel: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
+    { test: n => n.includes('ที่นอน'), icon: 'fa-wind', solid: '#14b8a6', pastel: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
+    { test: n => n.includes('รถนอน') || n.includes('เปลเข็น'), icon: 'fa-bed-pulse', solid: '#d946ef', pastel: '#fdf4ff', border: '#f5d0fe', text: '#a21caf' },
+    { test: n => n.includes('เครื่องผลิตออกซิเจน'), icon: 'fa-lungs', solid: '#0ea5e9', pastel: '#f0f9ff', border: '#bae6fd', text: '#0369a1' },
+    { test: n => n.includes('ออกซิเจน'), icon: 'fa-fire-extinguisher', solid: '#06b6d4', pastel: '#ecfeff', border: '#a5f3fc', text: '#0e7490' },
+    { test: n => n.includes('ดูดเสมหะ'), icon: 'fa-pump-medical', solid: '#f43f5e', pastel: '#fff1f2', border: '#fecdd3', text: '#be123c' },
+    { test: n => n.includes('รถเข็น'), icon: 'fa-wheelchair', solid: '#f59e0b', pastel: '#fffbeb', border: '#fde68a', text: '#b45309' },
+    { test: n => n.includes('วอคเกอร์'), icon: 'fa-person-walking-with-cane', solid: '#a855f7', pastel: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
+    { test: n => n.includes('ไม้ค้ำ'), icon: 'fa-crutch', solid: '#8b5cf6', pastel: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9' },
+    { test: n => n.includes('ไม้เท้า'), icon: 'fa-crutch', solid: '#f97316', pastel: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
+    { test: n => n.toLowerCase().includes('dtx') || n.includes('เจาะน้ำตาล'), icon: 'fa-droplet', solid: '#ef4444', pastel: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
 ];
+
+const DEFAULT_CATEGORY_VISUAL = { icon: 'fa-kit-medical', solid: '#3b82f6', pastel: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' };
 
 function getCategoryVisual(name) {
     const match = CATEGORY_VISUALS.find(r => r.test(name));
-    return { icon: match ? match.icon : 'fa-kit-medical', hue: match ? match.hue : 'blue' };
+    return match || DEFAULT_CATEGORY_VISUAL;
 }
 
 function renderEquipmentTypeGrid() {
@@ -329,13 +333,16 @@ function renderEquipmentTypeGrid() {
     }
     
     for (let name in groups) {
-        const { icon, hue } = getCategoryVisual(name);
+        const { icon, solid, pastel, border, text } = getCategoryVisual(name);
         const g = groups[name];
         const card = document.createElement('div');
-        card.className = `cat-card bg-${hue}-50/70 border-${hue}-100/60 text-${hue}-700 border p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all hover:scale-[1.02] hover:shadow-lg`;
+        card.className = `cat-card border p-4 rounded-2xl shadow-sm flex items-center justify-between transition-all hover:scale-[1.02] hover:shadow-lg`;
+        card.style.backgroundColor = pastel;
+        card.style.borderColor = border;
+        card.style.color = text;
         card.innerHTML = `
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="cat-badge w-12 h-12 flex items-center justify-center rounded-2xl bg-${hue}-500 text-white shadow-lg ring-4 ring-${hue}-200/60 flex-shrink-0">
+                <div class="cat-badge w-12 h-12 flex items-center justify-center rounded-2xl text-white flex-shrink-0" style="background-color:${solid}; box-shadow:0 6px 16px -6px ${solid}99, 0 0 0 4px ${solid}33;">
                     <i class="fa-solid ${icon} text-xl"></i>
                 </div>
                 <div class="overflow-hidden">
@@ -343,7 +350,7 @@ function renderEquipmentTypeGrid() {
                     <p class="text-[11px] text-gray-500 mt-0.5">ทั้งหมด: ${g.total} | คงเหลือว่าง: <span class="text-emerald-600 font-bold">${g.available}</span></p>
                 </div>
             </div>
-            <div class="text-right flex-shrink-0"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100/80 text-rose-700">ยืมอยู่: ${g.borrowed}</span></div>
+            <div class="text-right flex-shrink-0"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background-color:#ffe4e6; color:#be123c;">ยืมอยู่: ${g.borrowed}</span></div>
         `;
         grid.appendChild(card);
     }
