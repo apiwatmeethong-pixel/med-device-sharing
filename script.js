@@ -3,7 +3,7 @@
  * พัฒนาโดย: ศบส.บ้านโทกหัวช้าง (James)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxmTxNsUiTvsw4NIo9MGKZSfiCooPPwyi2UpEdZSHgl_SpBixS5KiuhlqfCZ8OClaCWhQ/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxf2Nf77urFHAZIWFpZtVjXyfnA2FBZilEyNOutfywIWjbZF6lOBPUZkyvC1NJBoo363w/exec"; 
 
 const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
 
@@ -38,17 +38,27 @@ async function run(action, payload = {}) {
         console.error("ยังไม่ได้ระบุที่อยู่เว็บบริการ API_URL ของระบบ");
         return { success: false, error: 'ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์เชื่อมต่อ' };
     }
+    // ⏱️ กันไม่ให้คำขอค้างรอตลอดไปแบบไม่มีกำหนด (โดยเฉพาะตอนอัปโหลดรูปภาพที่ Google Apps Script อาจใช้เวลานานผิดปกติ)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 วินาที
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
             mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: action, payload: payload })
+            body: JSON.stringify({ action: action, payload: payload }),
+            signal: controller.signal
         });
         return await response.json();
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error("คำขอใช้เวลานานเกินไป (เกิน 90 วินาที):", action);
+            return { success: false, error: 'การเชื่อมต่อใช้เวลานานเกินไป (เกิน 90 วินาที) กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง' };
+        }
         console.error("การเชื่อมต่อระบบเซิร์ฟเวอร์ API ล้มเหลว:", error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
@@ -883,6 +893,9 @@ function switchTab(tabId) {
     if (tabId === 'tracking') {
         renderTrackingSection();
     }
+    if (tabId === 'settings') {
+        loadAdminUsersSection();
+    }
 }
 
 function toggleSidebarMinimize() {
@@ -996,7 +1009,13 @@ function exportToCSV(sheetName) {
 
 async function submitBorrowForm(event) {
     event.preventDefault();
-    Swal.fire({ title: 'กำลังบันทึกเอกสาร...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    const hasPhotos = borrowPhotos.length > 0;
+    Swal.fire({
+        title: 'กำลังบันทึกเอกสาร...',
+        html: hasPhotos ? `<span class="text-xs text-gray-400">กำลังอัปโหลดรูปภาพหลักฐาน ${borrowPhotos.length} รูป อาจใช้เวลาถึง 30-60 วินาที<br>กรุณาอย่าปิดหน้าต่างนี้ระหว่างดำเนินการ</span>` : '',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
 
     const payload = {
         EquipmentID: document.getElementById('borrow-eq-id').value,
@@ -1021,6 +1040,8 @@ async function submitBorrowForm(event) {
             Swal.fire('บันทึกสำเร็จ', 'ระบบลงทะเบียนอนุมัติพิมพ์สัญญาเรียบร้อย', 'success');
             closeBorrowModal();
             await loadSystemData();
+        } else {
+            Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกเอกสาร กรุณาลองใหม่อีกครั้ง', 'error');
         }
     } catch (e) { Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดเครือข่าย', 'error'); }
 }
@@ -1039,6 +1060,7 @@ function processReturnItem(id) {
             Swal.fire({ title: 'กำลังตัดยอดคืนคลัง...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
             const res = await run('returnBorrow', { EntryID: id, ReturnDate: new Date().toISOString(), Note: result.value || 'คืนสภาพปกติ' });
             if (res.success) { Swal.fire('รับคืนเสร็จสิ้น', 'อัปเดตสถานะว่างพร้อมใช้งานในคลังแล้ว', 'success'); await loadSystemData(); }
+            else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกการคืนอุปกรณ์', 'error'); }
         }
     });
 }
@@ -1054,6 +1076,7 @@ function deleteBorrowRecord(id) {
         if (r.isConfirmed) {
             const res = await run('deleteBorrow', { id: id });
             if (res.success) { Swal.fire('ถอนรากข้อมูลแล้ว', '', 'success'); await loadSystemData(); }
+            else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการลบรายการ', 'error'); }
         }
     });
 }
@@ -1068,6 +1091,7 @@ async function submitEquipmentForm(event) {
     };
     const res = await run('addEquipment', payload);
     if (res.success) { Swal.fire('เพิ่มขึ้นคลังสำเร็จ', '', 'success'); closeEquipmentModal(); await loadSystemData(); }
+    else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกครุภัณฑ์', 'error'); }
 }
 
 async function deleteEquipmentRecord(id) {
@@ -1075,6 +1099,7 @@ async function deleteEquipmentRecord(id) {
         if (r.isConfirmed) {
             const res = await run('deleteEquipment', { id: id });
             if (res.success) { Swal.fire('ลบรายการสำเร็จ', '', 'success'); await loadSystemData(); }
+            else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการลบครุภัณฑ์', 'error'); }
         }
     });
 }
@@ -1104,10 +1129,12 @@ async function saveSettingsForm(event) {
             payload.logoBase64 = rd.result;
             const res = await run('saveSettings', payload);
             if (res.success) { Swal.fire('อัปเดตระบบแล้ว', '', 'success'); await loadSystemData(); }
+            else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า', 'error'); }
         };
     } else {
         const res = await run('saveSettings', payload);
         if (res.success) { Swal.fire('อัปเดตระบบแล้ว', '', 'success'); await loadSystemData(); }
+        else { Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า', 'error'); }
     }
 }
 
@@ -1157,7 +1184,7 @@ function handleBorrowPhotoSelect(event) {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        compressImageDataUrl(e.target.result, 1280, 0.72).then(compressed => {
+        compressImageDataUrl(e.target.result, 1000, 0.65).then(compressed => {
             borrowPhotos.push(compressed);
             renderBorrowPhotoPreviews();
         });
@@ -1248,6 +1275,100 @@ function closeImageGallery() {
 }
 function openEquipmentModal() { document.getElementById('modal-equipment').classList.add('active'); }
 function closeEquipmentModal() { document.getElementById('modal-equipment').classList.remove('active'); }
+
+// 👥 โหลดรายชื่อผู้ใช้งานสิทธิ์ Admin ทั้งหมดมาแสดงในหน้าตั้งค่า
+async function loadAdminUsersSection() {
+    const list = document.getElementById('admin-users-list');
+    if (!list) return;
+    list.innerHTML = `<div class="empty-state py-6"><i class="fa-solid fa-spinner fa-spin text-lg"></i><span>กำลังโหลดรายชื่อผู้ใช้งาน...</span></div>`;
+    try {
+        const res = await run('getAdminUsers', {});
+        if (res.needLogin) { list.innerHTML = `<div class="empty-state py-6"><i class="fa-solid fa-lock text-lg"></i><span>กรุณาเข้าสู่ระบบใหม่อีกครั้ง</span></div>`; return; }
+        if (!res.success) { list.innerHTML = `<div class="empty-state py-6 text-rose-500"><i class="fa-solid fa-triangle-exclamation text-lg"></i><span>${res.error || 'โหลดข้อมูลไม่สำเร็จ'}</span></div>`; return; }
+        renderAdminUsersTable(res.data || []);
+    } catch (e) {
+        list.innerHTML = `<div class="empty-state py-6 text-rose-500"><i class="fa-solid fa-triangle-exclamation text-lg"></i><span>เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ</span></div>`;
+    }
+}
+
+function renderAdminUsersTable(users) {
+    const list = document.getElementById('admin-users-list');
+    if (!list) return;
+    if (users.length === 0) {
+        list.innerHTML = `<div class="empty-state py-6"><i class="fa-solid fa-user-slash text-lg"></i><span>ยังไม่มีบัญชีผู้ใช้งานในระบบ</span></div>`;
+        return;
+    }
+    const myAdminId = localStorage.getItem('adminId') || '';
+    list.innerHTML = users.map(u => {
+        const isMe = String(u.adminId).trim().toLowerCase() === String(myAdminId).trim().toLowerCase();
+        return `
+        <div class="flex items-center justify-between bg-gray-50/70 border border-gray-100 rounded-xl px-3 py-2.5">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user text-xs"></i></div>
+                <div class="overflow-hidden">
+                    <p class="font-bold text-gray-700 truncate">${u.adminName} ${isMe ? '<span class="text-[10px] font-semibold text-indigo-500">(บัญชีของคุณ)</span>' : ''}</p>
+                    <p class="text-[11px] text-gray-400 truncate">Username: ${u.adminId}</p>
+                </div>
+            </div>
+            <button onclick="deleteAdminUserPrompt('${u.adminId}')" ${isMe ? 'disabled title="ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ได้"' : 'title="ลบผู้ใช้งานนี้"'} class="p-2 rounded-lg transition flex-shrink-0 ${isMe ? 'text-gray-300 cursor-not-allowed' : 'bg-rose-50 hover:bg-rose-100 text-rose-600'}">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+        </div>`;
+    }).join('');
+}
+
+function openAddAdminUserModal() {
+    document.getElementById('form-admin-user').reset();
+    document.getElementById('modal-admin-user').classList.add('active');
+}
+function closeAddAdminUserModal() { document.getElementById('modal-admin-user').classList.remove('active'); }
+
+async function submitAddAdminUserForm(event) {
+    event.preventDefault();
+    const adminId = document.getElementById('new-admin-id').value.trim();
+    const adminName = document.getElementById('new-admin-name').value.trim();
+    const password = document.getElementById('new-admin-password').value.trim();
+
+    Swal.fire({ title: 'กำลังเพิ่มผู้ใช้งาน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    try {
+        const res = await run('addAdminUser', { adminId, adminName, password });
+        if (res.success) {
+            Swal.fire('เพิ่มผู้ใช้งานสำเร็จ', `เพิ่มบัญชี "${adminId}" เข้าสู่ระบบเรียบร้อยแล้ว`, 'success');
+            closeAddAdminUserModal();
+            loadAdminUsersSection();
+        } else {
+            Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการเพิ่มผู้ใช้งาน', 'error');
+        }
+    } catch (e) {
+        Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    }
+}
+
+function deleteAdminUserPrompt(adminId) {
+    Swal.fire({
+        title: 'ยืนยันการลบผู้ใช้งาน?',
+        text: `ต้องการลบบัญชี "${adminId}" ออกจากระบบใช่หรือไม่ บัญชีนี้จะไม่สามารถเข้าสู่ระบบได้อีก`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันลบ',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#e11d48'
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: 'กำลังลบผู้ใช้งาน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        try {
+            const res = await run('deleteAdminUser', { adminId });
+            if (res.success) {
+                Swal.fire('ลบสำเร็จ', 'ลบบัญชีผู้ใช้งานเรียบร้อยแล้ว', 'success');
+                loadAdminUsersSection();
+            } else {
+                Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้งาน', 'error');
+            }
+        } catch (e) {
+            Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+        }
+    });
+}
 
 // ฟังก์ชันสากลสำหรับสร้างชุดปุ่มกดพลิกหน้าเพจตารางข้อมูลสไตล์ Premium Soft UI
 function buildPaginationDashboardControls(controlsContainerId, infoLabelId, currentPageNumber, totalItemsCount, rowsLimit, pageChangeFunctionName) {
