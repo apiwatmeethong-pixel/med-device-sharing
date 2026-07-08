@@ -115,6 +115,19 @@ body.font-sarabun{ font-family:'Sarabun', sans-serif; -webkit-tap-highlight-colo
 }
 .cat-card:hover .cat-badge{ transform:scale(1.08) rotate(-4deg); }
 
+/* ---------- ปุ่ม CTA หลักที่ต้องการความโดดเด่นเป็นพิเศษ (แทนการใช้ shadow-{color} ของ Tailwind v3 ที่ระบบนี้ไม่มี) ---------- */
+.btn-cta-teal{ box-shadow:0 8px 20px -6px rgba(13,148,136,.45); }
+.btn-cta-teal:hover{ box-shadow:0 10px 24px -6px rgba(13,148,136,.55); background-color:#0f766e !important; }
+.btn-cta-teal:active{ background-color:#115e59 !important; }
+
+.btn-cta-purple{ box-shadow:0 8px 20px -6px rgba(126,34,206,.45); }
+.btn-cta-purple:hover{ box-shadow:0 10px 24px -6px rgba(126,34,206,.55); background-color:#6b21a8 !important; }
+.btn-cta-purple:active{ background-color:#581c87 !important; }
+
+.btn-cta-indigo{ box-shadow:0 8px 20px -6px rgba(79,70,229,.45); }
+.btn-cta-indigo:hover{ box-shadow:0 10px 24px -6px rgba(79,70,229,.55); background-color:#4338ca !important; }
+.btn-cta-indigo:active{ background-color:#3730a3 !important; }
+
 /* ---------- theme toggle ---------- */
 .theme-toggle-btn i{ transition:transform .35s cubic-bezier(.34,1.56,.64,1); }
 .theme-toggle-btn:hover i{ transform:rotate(20deg) scale(1.1); }
