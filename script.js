@@ -3,7 +3,7 @@
  * พัฒนาโดย: ศบส.บ้านโทกหัวช้าง (James)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxf2Nf77urFHAZIWFpZtVjXyfnA2FBZilEyNOutfywIWjbZF6lOBPUZkyvC1NJBoo363w/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbw1oBJfpc9iEj6jGDzqrrzIIMGHg7gLgx4Y5mVDtlL-JLcE2yiEpTbQIacCLCOo1k36vg/exec"; 
 
 const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
 
@@ -49,7 +49,22 @@ async function run(action, payload = {}) {
             body: JSON.stringify({ action: action, payload: payload }),
             signal: controller.signal
         });
-        return await response.json();
+        const result = await response.json();
+        // 🔒 หาก Token หมดอายุ/ไม่ถูกต้อง (เช่น เกิน 6 ชม. หลังล็อกอิน) ให้แจ้งเตือนชัดเจนและพากลับไปหน้าล็อกอินใหม่
+        // แทนที่จะปล่อยให้ทุกฟังก์ชันขึ้น "ไม่สำเร็จ" แบบไม่ทราบสาเหตุ
+        if (result && result.needLogin) {
+            if (!window.__sessionExpiredNotified) {
+                window.__sessionExpiredNotified = true;
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminId');
+                localStorage.removeItem('adminName');
+                Swal.fire('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่อีกครั้งเพื่อดำเนินการต่อ', 'warning').then(() => {
+                    window.location.reload();
+                });
+            }
+            return { success: false, error: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง', needLogin: true };
+        }
+        return result;
     } catch (error) {
         if (error.name === 'AbortError') {
             console.error("คำขอใช้เวลานานเกินไป (เกิน 90 วินาที):", action);
@@ -1252,11 +1267,19 @@ function renderBorrowPhotoPreviews() {
 }
 
 // 🖼️ เปิดดูรูปภาพหลักฐานที่แนบไว้กับรายการยืมจากตารางแอดมิน
+// 🖼️ ประกอบ URL รูปภาพจากค่าที่เก็บในคอลัมน์ Images ซึ่งอาจเป็น "รหัสไฟล์ Drive ล้วนๆ" (รูปแบบปัจจุบัน)
+// หรือ "URL เต็ม" (รูปแบบเก่าที่เคยบันทึกไว้ก่อนหน้านี้) ให้รองรับได้ทั้งสองแบบ
+function driveImageUrl(idOrUrl) {
+    const val = String(idOrUrl).trim();
+    if (val.startsWith('http')) return val; // เดิมเคยเก็บเป็น URL เต็มไว้แล้ว ใช้ตรงๆ ได้เลย
+    return `https://drive.google.com/thumbnail?id=${val}&sz=w800`; // เก็บเป็นรหัสไฟล์ล้วนๆ ให้ประกอบ URL เอง
+}
+
 function viewBorrowImages(entryId) {
     const record = state.data.find(r => (r.EntryID || r[0]) === entryId);
     if (!record) return;
     const imagesRaw = record.Images || record[7] || '';
-    const urls = String(imagesRaw).split(',').map(s => s.trim()).filter(Boolean);
+    const urls = String(imagesRaw).split(',').map(s => s.trim()).filter(Boolean).map(driveImageUrl);
 
     const body = document.getElementById('image-gallery-body');
     if (urls.length === 0) {
