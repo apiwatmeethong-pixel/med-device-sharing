@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=2.9" />
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sarabun">
 
@@ -201,6 +201,7 @@
     <div class="flex items-center gap-1.5" id="public-pagination-controls"></div>
 </div>
                     </div>
+                </div>
                 </section>
 
             <section id="sec-borrow" class="app-view space-y-6 hidden">
@@ -393,11 +394,26 @@
                         </button>
                     </form>
                 </div>
+
+                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 max-w-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><i class="fa-solid fa-users-gear text-indigo-500"></i> จัดการผู้ใช้งานระบบ (สิทธิ์ Admin)</h4>
+                            <p class="text-[11px] text-gray-400 mt-0.5">เพิ่มหรือลบบัญชีเจ้าหน้าที่ที่สามารถเข้าสู่ระบบจัดการหลังบ้านได้</p>
+                        </div>
+                        <button onclick="openAddAdminUserModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5 flex-shrink-0">
+                            <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งาน
+                        </button>
+                    </div>
+                    <div id="admin-users-list" class="space-y-2 text-xs">
+                        <div class="empty-state py-6"><i class="fa-solid fa-spinner fa-spin text-lg"></i><span>กำลังโหลดรายชื่อผู้ใช้งาน...</span></div>
+                    </div>
+                </div>
             </section>
         </main>
 
         <footer class="bg-white border-t border-gray-100 py-3 px-6 text-center text-[11px] text-gray-400 font-medium mt-auto print:hidden">
-            <div>© 2026 ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.4 | Design & Developed by Apiwat Meethong</div>
+            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v2.9 | พัฒนาโดย ศบส.บ้านโทกหัวช้าง (James)</div>
         </footer>
     </div>
 
@@ -649,8 +665,10 @@
                     </label>
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                    <button type="button" onclick="closeBorrowModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-xl font-medium">ยกเลิก</button>
-                    <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-xl font-semibold shadow-sm">บันทึกเอกสารสัญญา</button>
+                    <button type="button" onclick="closeBorrowModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
+                    <button type="submit" class="btn-cta-teal rounded-xl font-bold transition-all" style="background-color:#0d9488; color:#ffffff; padding:10px 24px; display:inline-flex; align-items:center; gap:8px; border:none;">
+                        <i class="fa-solid fa-floppy-disk" style="color:#ffffff;"></i> <span style="color:#ffffff;">บันทึกเอกสารสัญญา</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -679,13 +697,47 @@
                     <input type="text" id="eq-serial" placeholder="ตัวอย่าง: เตียง-24, OX-05" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                    <button type="button" onclick="closeEquipmentModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-xl font-medium">ยกเลิก</button>
-                    <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-xl font-medium">บันทึกขึ้นคลัง</button>
+                    <button type="button" onclick="closeEquipmentModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
+                    <button type="submit" class="btn-cta-purple rounded-xl font-bold transition-all" style="background-color:#7e22ce; color:#ffffff; padding:10px 20px; display:inline-flex; align-items:center; gap:8px; border:none;">
+                        <i class="fa-solid fa-floppy-disk" style="color:#ffffff;"></i> <span style="color:#ffffff;">บันทึกขึ้นคลัง</span>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <div id="modal-admin-user" class="modal-backdrop">
+        <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-sm mx-4 animate-scale text-xs">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-indigo-50 rounded-xl text-indigo-600"><i class="fa-solid fa-user-plus"></i></div>
+                    <h4 class="font-bold text-gray-800 text-sm">เพิ่มผู้ใช้งานสิทธิ์ Admin ใหม่</h4>
+                </div>
+                <button onclick="closeAddAdminUserModal()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <form id="form-admin-user" onsubmit="submitAddAdminUserForm(event)" class="space-y-4">
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" id="new-admin-id" placeholder="ตัวอย่าง: staff02" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">ชื่อที่แสดงผล (Display Name)</label>
+                    <input type="text" id="new-admin-name" placeholder="ตัวอย่าง: เจ้าหน้าที่ สมชาย" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" />
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">รหัสผ่าน (Password)</label>
+                    <input type="password" id="new-admin-password" placeholder="อย่างน้อย 4 ตัวอักษร" minlength="4" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" onclick="closeAddAdminUserModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
+                    <button type="submit" class="btn-cta-indigo rounded-xl font-bold transition-all" style="background-color:#4f46e5; color:#ffffff; padding:10px 20px; display:inline-flex; align-items:center; gap:8px; border:none;">
+                        <i class="fa-solid fa-user-check" style="color:#ffffff;"></i> <span style="color:#ffffff;">เพิ่มผู้ใช้งาน</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js?v=2.9"></script>
 </body>
 </html>
