@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="style.css?v=3.3" />
+    <link rel="stylesheet" href="style.css?v=3.4" />
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sarabun">
 
@@ -414,10 +414,113 @@
                     </div>
                 </div>
             </section>
+
+            <section id="sec-borrow-form" class="app-view space-y-6 hidden">
+                <div style="background-color:#ffffff; border:1px solid #f1f5f9; border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,.06); padding:24px;" class="text-xs">
+            <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid #f1f5f9;">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-teal-50 rounded-xl text-teal-600"><i class="fa-solid fa-file-signature"></i></div>
+                    <h4 id="borrow-modal-title" class="font-bold text-gray-800 text-sm">บันทึกเอกสารสัญญายืมพัสดุชิ้นใหม่</h4>
+                </div>
+                <button onclick="cancelBorrowForm()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl" title="กลับไปหน้ารายการ"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <form id="form-borrow" onsubmit="submitBorrowForm(event)" class="space-y-3.5">
+                <input type="hidden" id="borrow-entry-id" />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">เลือกอุปกรณ์ในคลังพัสดุ</label>
+                        <select id="borrow-eq-id" onchange="syncSerialNumber()" class="w-full border border-gray-200 px-3 py-2 rounded-xl bg-white focus:outline-none" required></select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">หมายเลขรหัสพัสดุครุภัณฑ์ (Serial No.)</label>
+                        <input type="text" id="borrow-serial" class="w-full border border-gray-100 bg-gray-50 px-3 py-2 rounded-xl text-gray-500 outline-none" readonly />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">ชื่อ-นามสกุล ผู้ป่วยขอยืม</label>
+                        <input type="text" id="borrow-patient" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">ชื่อผู้ทำสัญญาแทน (กรณีญาติดำเนินการแทน)</label>
+                        <input type="text" id="borrow-name" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ระบุชื่อญาติผู้ทำรายการแทน" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">เลขประจำตัวประชาชน (13 หลัก)</label>
+                        <input type="text" id="borrow-citizen" maxlength="13" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="text" id="borrow-phone" maxlength="10" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">ความสัมพันธ์กับตัวผู้ป่วย</label>
+                        <input type="text" id="borrow-relationship" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ตนเอง, บุตร, สามี, ภรรยา" required />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">เลือกเขตหมู่บ้าน / ชุมชนพื้นที่</label>
+                        <select id="borrow-community" class="w-full border border-gray-200 px-3 py-2 rounded-xl bg-white focus:outline-none" required></select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">บ้านเลขที่ / ที่อยู่ปัจจุบันโดยละเอียด</label>
+                        <input type="text" id="borrow-address" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-2">
+                    <label class="block font-bold text-gray-500 uppercase">ข้อมูลระบุตําแหน่งที่ตั้งทางภูมิศาสตร์ (GPS Coordinates)</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="borrow-gps" placeholder="ตัวอย่างค่าพิกัด: 18.23412, 99.41243" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none bg-white font-mono" />
+                        <button type="button" onclick="getCurrentLocation()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-xl border border-indigo-100 transition flex items-center gap-1.5 whitespace-nowrap text-xs shadow-sm">
+                            <i class="fa-solid fa-location-crosshairs"></i> ดึงพิกัดปัจจุบันหน้างาน
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">วันที่อนุมัติทำสัญญายืม</label>
+                        <input type="date" id="borrow-date" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-500 mb-1">มูลค่าเงินมัดจำประกันครุภัณฑ์ (บาท)</label>
+                        <input type="number" id="borrow-deposit" value="0" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">บันทึกรายละเอียดหมายเหตุเพิ่มเติม</label>
+                    <textarea id="borrow-note" rows="1.5" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1.5">ถ่ายรูปหลักฐานการยืมอุปกรณ์ (สูงสุด 3 รูป)</label>
+                    <input type="file" id="borrow-photo-input" accept="image/*" capture="environment" class="hidden" onchange="handleBorrowPhotoSelect(event)" />
+                    <div id="borrow-photo-previews" class="grid grid-cols-3 gap-2 mb-2 hidden"></div>
+                    <button type="button" id="borrow-photo-trigger" onclick="document.getElementById('borrow-photo-input').click()" class="w-full border-2 border-dashed border-gray-200 hover:border-teal-300 hover:bg-teal-50/40 text-gray-400 hover:text-teal-600 rounded-xl py-3 flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-camera"></i> <span id="borrow-photo-trigger-label">ถ่ายรูปหลักฐาน (Max 3)</span>
+                    </button>
+                </div>
+                <div class="flex items-start gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100/40">
+                    <input type="checkbox" id="borrow-pdpa-check" class="mt-0.5 rounded focus:ring-emerald-500 accent-emerald-600 h-4 w-4" required />
+                    <label for="borrow-pdpa-check" class="text-[11px] text-emerald-800 leading-tight">
+                        เจ้าหน้าที่ผู้ทำรายการยืนยันว่า ได้ปฏิบัติตาม พรบ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ในการได้รับความยินยอมทางวาจา/เอกสาร จากผู้ป่วยหรือญาติเรียบร้อยแล้ว
+                    </label>
+                </div>
+                <div class="flex justify-end gap-2 pt-2" style="border-top:1px solid #f1f5f9;">
+                    <button type="button" onclick="cancelBorrowForm()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
+                    <button type="submit" id="borrow-submit-btn" class="btn-cta-teal rounded-xl font-bold transition-all" style="background-color:#0d9488; color:#ffffff; padding:10px 24px; display:inline-flex; align-items:center; gap:8px; border:none;">
+                        <i class="fa-solid fa-floppy-disk" style="color:#ffffff;"></i> <span id="borrow-submit-label" style="color:#ffffff;">บันทึกเอกสารสัญญา</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
         </main>
 
         <footer class="bg-white border-t border-gray-100 py-3 px-6 text-center text-[11px] text-gray-400 font-medium mt-auto print:hidden">
-            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v3.3 | Design & Developed by Apiwat Meethong</div>
+            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v3.4 | Design & Developed by Apiwat Meethong</div>
         </footer>
     </div>
 
@@ -576,108 +679,6 @@
         </div>
     </div>
 
-    <section id="sec-borrow-form" class="app-view space-y-6 hidden">
-        <div style="background-color:#ffffff; border:1px solid #f1f5f9; border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,.06); padding:24px;" class="text-xs">
-            <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid #f1f5f9;">
-                <div class="flex items-center gap-2">
-                    <div class="p-2 bg-teal-50 rounded-xl text-teal-600"><i class="fa-solid fa-file-signature"></i></div>
-                    <h4 id="borrow-modal-title" class="font-bold text-gray-800 text-sm">บันทึกเอกสารสัญญายืมพัสดุชิ้นใหม่</h4>
-                </div>
-                <button onclick="cancelBorrowForm()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl" title="กลับไปหน้ารายการ"><i class="fa-solid fa-xmark text-sm"></i></button>
-            </div>
-            <form id="form-borrow" onsubmit="submitBorrowForm(event)" class="space-y-3.5">
-                <input type="hidden" id="borrow-entry-id" />
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">เลือกอุปกรณ์ในคลังพัสดุ</label>
-                        <select id="borrow-eq-id" onchange="syncSerialNumber()" class="w-full border border-gray-200 px-3 py-2 rounded-xl bg-white focus:outline-none" required></select>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">หมายเลขรหัสพัสดุครุภัณฑ์ (Serial No.)</label>
-                        <input type="text" id="borrow-serial" class="w-full border border-gray-100 bg-gray-50 px-3 py-2 rounded-xl text-gray-500 outline-none" readonly />
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">ชื่อ-นามสกุล ผู้ป่วยขอยืม</label>
-                        <input type="text" id="borrow-patient" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">ชื่อผู้ทำสัญญาแทน (กรณีญาติดำเนินการแทน)</label>
-                        <input type="text" id="borrow-name" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ระบุชื่อญาติผู้ทำรายการแทน" />
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">เลขประจำตัวประชาชน (13 หลัก)</label>
-                        <input type="text" id="borrow-citizen" maxlength="13" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">เบอร์โทรศัพท์ติดต่อ</label>
-                        <input type="text" id="borrow-phone" maxlength="10" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">ความสัมพันธ์กับตัวผู้ป่วย</label>
-                        <input type="text" id="borrow-relationship" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" placeholder="ตนเอง, บุตร, สามี, ภรรยา" required />
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">เลือกเขตหมู่บ้าน / ชุมชนพื้นที่</label>
-                        <select id="borrow-community" class="w-full border border-gray-200 px-3 py-2 rounded-xl bg-white focus:outline-none" required></select>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">บ้านเลขที่ / ที่อยู่ปัจจุบันโดยละเอียด</label>
-                        <input type="text" id="borrow-address" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-2">
-                    <label class="block font-bold text-gray-500 uppercase">ข้อมูลระบุตําแหน่งที่ตั้งทางภูมิศาสตร์ (GPS Coordinates)</label>
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="text" id="borrow-gps" placeholder="ตัวอย่างค่าพิกัด: 18.23412, 99.41243" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none bg-white font-mono" />
-                        <button type="button" onclick="getCurrentLocation()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-xl border border-indigo-100 transition flex items-center gap-1.5 whitespace-nowrap text-xs shadow-sm">
-                            <i class="fa-solid fa-location-crosshairs"></i> ดึงพิกัดปัจจุบันหน้างาน
-                        </button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">วันที่อนุมัติทำสัญญายืม</label>
-                        <input type="date" id="borrow-date" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" required />
-                    </div>
-                    <div>
-                        <label class="block font-bold text-gray-500 mb-1">มูลค่าเงินมัดจำประกันครุภัณฑ์ (บาท)</label>
-                        <input type="number" id="borrow-deposit" value="0" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none" />
-                    </div>
-                </div>
-                <div>
-                    <label class="block font-bold text-gray-500 mb-1">บันทึกรายละเอียดหมายเหตุเพิ่มเติม</label>
-                    <textarea id="borrow-note" rows="1.5" class="w-full border border-gray-200 px-3 py-2 rounded-xl focus:outline-none"></textarea>
-                </div>
-                <div>
-                    <label class="block font-bold text-gray-500 mb-1.5">ถ่ายรูปหลักฐานการยืมอุปกรณ์ (สูงสุด 3 รูป)</label>
-                    <input type="file" id="borrow-photo-input" accept="image/*" capture="environment" class="hidden" onchange="handleBorrowPhotoSelect(event)" />
-                    <div id="borrow-photo-previews" class="grid grid-cols-3 gap-2 mb-2 hidden"></div>
-                    <button type="button" id="borrow-photo-trigger" onclick="document.getElementById('borrow-photo-input').click()" class="w-full border-2 border-dashed border-gray-200 hover:border-teal-300 hover:bg-teal-50/40 text-gray-400 hover:text-teal-600 rounded-xl py-3 flex items-center justify-center gap-2 transition-all">
-                        <i class="fa-solid fa-camera"></i> <span id="borrow-photo-trigger-label">ถ่ายรูปหลักฐาน (Max 3)</span>
-                    </button>
-                </div>
-                <div class="flex items-start gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100/40">
-                    <input type="checkbox" id="borrow-pdpa-check" class="mt-0.5 rounded focus:ring-emerald-500 accent-emerald-600 h-4 w-4" required />
-                    <label for="borrow-pdpa-check" class="text-[11px] text-emerald-800 leading-tight">
-                        เจ้าหน้าที่ผู้ทำรายการยืนยันว่า ได้ปฏิบัติตาม พรบ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ในการได้รับความยินยอมทางวาจา/เอกสาร จากผู้ป่วยหรือญาติเรียบร้อยแล้ว
-                    </label>
-                </div>
-                <div class="flex justify-end gap-2 pt-2" style="border-top:1px solid #f1f5f9;">
-                    <button type="button" onclick="cancelBorrowForm()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
-                    <button type="submit" id="borrow-submit-btn" class="btn-cta-teal rounded-xl font-bold transition-all" style="background-color:#0d9488; color:#ffffff; padding:10px 24px; display:inline-flex; align-items:center; gap:8px; border:none;">
-                        <i class="fa-solid fa-floppy-disk" style="color:#ffffff;"></i> <span id="borrow-submit-label" style="color:#ffffff;">บันทึกเอกสารสัญญา</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </section>
-
     <div id="modal-equipment" class="modal-backdrop">
         <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-sm mx-4 animate-scale text-xs">
             <div class="flex justify-between items-center mb-4">
@@ -742,6 +743,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=3.3"></script>
+    <script src="script.js?v=3.4"></script>
 </body>
 </html>
