@@ -35,6 +35,19 @@ html[data-theme="dark"]{
 html{ scroll-behavior:smooth; -webkit-tap-highlight-color:transparent; }
 body.font-sarabun{ font-family:'Sarabun', sans-serif; -webkit-tap-highlight-color:transparent; }
 
+/* ---------- เพิ่มขนาดตัวอักษรโดยรวมของทั้งเว็บให้อ่านง่ายและชัดเจนขึ้น ---------- */
+/* ระบบเดิมใช้ตัวอักษรเล็กมาก (text-xs และเล็กกว่า) เกือบทั้งเว็บ จึงปรับขนาดจริงของคลาสเหล่านี้ให้ใหญ่ขึ้นทั่วทั้งระบบ */
+.text-\[9px\]{ font-size:10px !important; }
+.text-\[10px\]{ font-size:11.5px !important; }
+.text-\[11px\]{ font-size:12.5px !important; }
+.text-xs{ font-size:13.5px !important; line-height:1.55 !important; }
+.text-sm{ font-size:15px !important; line-height:1.6 !important; }
+.text-base{ font-size:16.5px !important; }
+.text-lg{ font-size:19px !important; }
+.text-xl{ font-size:21px !important; }
+.text-2xl{ font-size:25px !important; }
+.text-3xl{ font-size:31px !important; }
+
 /* ---------- scrollbars ---------- */
 ::-webkit-scrollbar{ width:8px; height:8px; }
 ::-webkit-scrollbar-track{ background:transparent; }
@@ -127,6 +140,10 @@ body.font-sarabun{ font-family:'Sarabun', sans-serif; -webkit-tap-highlight-colo
 .btn-cta-indigo{ box-shadow:0 8px 20px -6px rgba(79,70,229,.45); }
 .btn-cta-indigo:hover{ box-shadow:0 10px 24px -6px rgba(79,70,229,.55); background-color:#4338ca !important; }
 .btn-cta-indigo:active{ background-color:#3730a3 !important; }
+
+.btn-cta-amber{ box-shadow:0 8px 20px -6px rgba(217,119,6,.45); }
+.btn-cta-amber:hover{ box-shadow:0 10px 24px -6px rgba(217,119,6,.55); background-color:#b45309 !important; }
+.btn-cta-amber:active{ background-color:#92400e !important; }
 
 /* ---------- theme toggle ---------- */
 .theme-toggle-btn i{ transition:transform .35s cubic-bezier(.34,1.56,.64,1); }

@@ -3,7 +3,7 @@
  * พัฒนาโดย: ศบส.บ้านโทกหัวช้าง (James)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbw1oBJfpc9iEj6jGDzqrrzIIMGHg7gLgx4Y5mVDtlL-JLcE2yiEpTbQIacCLCOo1k36vg/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbzPHiANxxUEHUoAKyK1hHfGWuZN_ihkI8xQ3WXkLyPFG5DDONW5limoB-h6egfOsNKgzA/exec"; 
 
 const DEFAULT_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="%23e0e7ff"/><circle cx="60" cy="60" r="40" fill="%234f46e5"/><path d="M60 42v36M42 60h36" stroke="white" stroke-width="10" stroke-linecap="round"/></svg>';
 
@@ -29,6 +29,8 @@ let mapInstance = null;
 let communityLayers = {};
 let mapLayerControl = null;
 let borrowPhotos = []; // เก็บรูปหลักฐานที่แนบในฟอร์มยืม (base64 data URL) สูงสุด 3 รูป
+let editingBorrowId = null; // ถ้าไม่ใช่ null แปลว่ากำลังอยู่ในโหมด "แก้ไขรายการยืมเดิม" (ไม่ใช่สร้างใหม่)
+let existingBorrowImageIds = []; // รหัสไฟล์รูปภาพเดิมที่แนบไว้แล้ว (ตอนแก้ไขรายการ) ที่ผู้ใช้ยังต้องการเก็บไว้
 
 async function run(action, payload = {}) {
     if (localStorage.getItem('adminToken')) {
@@ -531,6 +533,9 @@ function renderAdminBorrowContainer() {
                     }
                     <button onclick="printLoanReceipt('${entryId}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg transition" title="พิมพ์ใบอนุมัติสัญญาค้ำประกันคลัง"><i class="fa-solid fa-print text-xs"></i></button>
                     ${(status === 'Borrowed' || status === 'ยืม') ? 
+                        `<button onclick="editBorrowRecord('${entryId}')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 p-1.5 rounded-lg transition" title="แก้ไขรายการนี้ (กรณีบันทึกผิด)"><i class="fa-solid fa-pen text-xs"></i></button>` : ''
+                    }
+                    ${(status === 'Borrowed' || status === 'ยืม') ? 
                         `<button onclick="processReturnItem('${entryId}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[11px] px-2.5 py-1 rounded-lg transition">คืน</button>` : ''
                     }
                     <button onclick="deleteBorrowRecord('${entryId}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
@@ -854,13 +859,19 @@ function renderEquipmentTable() {
     );
 }
 
-function populateFormSelectors() {
+function populateFormSelectors(currentEquipmentId) {
     const selectEq = document.getElementById('borrow-eq-id');
     if (!selectEq) return;
     selectEq.innerHTML = '<option value="">-- กรุณาเลือกรายการอุปกรณ์พัสดุ --</option>';
     
     const borrowedSet = getBorrowedEquipmentIdSet();
-    const availableEqs = state.equipments.filter(e => getEquipmentStatus(e, borrowedSet) === 'Available');
+    // ตอนแก้ไขรายการ อุปกรณ์ที่รายการนี้ถือครองอยู่แล้วจะถูกนับว่า "ถูกยืม" ไปด้วย ต้องดึงกลับมาแสดงในตัวเลือกด้วยเสมอ
+    const availableEqs = state.equipments.filter(e => {
+        const eqId = String(e.EquipmentID || e[0]);
+        const isAvailable = getEquipmentStatus(e, borrowedSet) === 'Available';
+        const isCurrentlyAssigned = currentEquipmentId && eqId === String(currentEquipmentId);
+        return isAvailable || isCurrentlyAssigned;
+    });
     availableEqs.forEach(e => {
         const opt = document.createElement('option');
         opt.value = e.EquipmentID || e[0];
@@ -1024,9 +1035,10 @@ function exportToCSV(sheetName) {
 
 async function submitBorrowForm(event) {
     event.preventDefault();
+    const isEditing = !!editingBorrowId;
     const hasPhotos = borrowPhotos.length > 0;
     Swal.fire({
-        title: 'กำลังบันทึกเอกสาร...',
+        title: isEditing ? 'กำลังอัปเดตข้อมูล...' : 'กำลังบันทึกเอกสาร...',
         html: hasPhotos ? `<span class="text-xs text-gray-400">กำลังอัปโหลดรูปภาพหลักฐาน ${borrowPhotos.length} รูป อาจใช้เวลาถึง 30-60 วินาที<br>กรุณาอย่าปิดหน้าต่างนี้ระหว่างดำเนินการ</span>` : '',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
@@ -1049,10 +1061,15 @@ async function submitBorrowForm(event) {
         imagesBase64: borrowPhotos
     };
 
+    if (isEditing) {
+        payload.EntryID = editingBorrowId;
+        payload.keepImageIds = existingBorrowImageIds; // แจ้งรายการรูปเดิมที่ยังต้องการเก็บไว้ ให้เซิร์ฟเวอร์ลบรูปที่เอาออกทิ้งจริงจาก Drive
+    }
+
     try {
-        const res = await run('addBorrow', payload);
+        const res = await run(isEditing ? 'updateBorrow' : 'addBorrow', payload);
         if (res.success) {
-            Swal.fire('บันทึกสำเร็จ', 'ระบบลงทะเบียนอนุมัติพิมพ์สัญญาเรียบร้อย', 'success');
+            Swal.fire('บันทึกสำเร็จ', isEditing ? 'อัปเดตข้อมูลรายการยืมเรียบร้อยแล้ว' : 'ระบบลงทะเบียนอนุมัติพิมพ์สัญญาเรียบร้อย', 'success');
             closeBorrowModal();
             await loadSystemData();
         } else {
@@ -1172,14 +1189,80 @@ function logout() { localStorage.clear(); window.location.reload(); }
 function openLoginModal() { document.getElementById('modal-login').classList.add('active'); }
 function closeLoginModal() { document.getElementById('modal-login').classList.remove('active'); }
 function openBorrowModal() {
+    editingBorrowId = null;
+    existingBorrowImageIds = [];
     borrowPhotos = [];
+    document.getElementById('form-borrow').reset();
+    document.getElementById('borrow-date').valueAsDate = new Date();
+    document.getElementById('borrow-modal-title').innerText = 'บันทึกเอกสารสัญญายืมพัสดุชิ้นใหม่';
+    setBorrowSubmitButtonMode(false);
+    populateFormSelectors();
     renderBorrowPhotoPreviews();
     document.getElementById('modal-borrow').classList.add('active');
 }
 function closeBorrowModal() {
     document.getElementById('modal-borrow').classList.remove('active');
+    editingBorrowId = null;
+    existingBorrowImageIds = [];
     borrowPhotos = [];
     renderBorrowPhotoPreviews();
+}
+
+// ✏️ เปิดฟอร์มเดิมขึ้นมาแก้ไข พร้อมดึงข้อมูล/รูปภาพเดิมมาแสดงไว้ล่วงหน้า สำหรับกรณีบันทึกผิดแล้วต้องการแก้ไข
+function editBorrowRecord(entryId) {
+    const record = state.data.find(r => (r.EntryID || r[0]) === entryId);
+    if (!record) return;
+
+    editingBorrowId = entryId;
+    borrowPhotos = [];
+    const imagesRaw = record.Images || record[7] || '';
+    existingBorrowImageIds = String(imagesRaw).split(',').map(s => s.trim()).filter(Boolean);
+
+    populateFormSelectors(record.EquipmentID || record[5]);
+
+    document.getElementById('borrow-eq-id').value = record.EquipmentID || record[5] || '';
+    document.getElementById('borrow-serial').value = record.SerialNumber || record[6] || '';
+    document.getElementById('borrow-patient').value = record.PatientName || record[13] || '';
+    document.getElementById('borrow-name').value = record.BorrowerName || record[1] || '';
+    document.getElementById('borrow-citizen').value = record.CitizenID || record[2] || '';
+    document.getElementById('borrow-phone').value = record.Phone || record[12] || '';
+    document.getElementById('borrow-relationship').value = record.Relationship || record[14] || '';
+    document.getElementById('borrow-address').value = record.Address || record[3] || '';
+    document.getElementById('borrow-gps').value = record.GPS || record[16] || '';
+    document.getElementById('borrow-deposit').value = record.Deposit || record[15] || 0;
+    document.getElementById('borrow-note').value = record.Note || record[11] || '';
+
+    const rawDate = record.BorrowDate || record[9];
+    if (rawDate) {
+        const d = new Date(rawDate);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        document.getElementById('borrow-date').value = d.toISOString().split('T')[0];
+    }
+
+    // ตั้งค่าเขตชุมชนหลังจากสร้าง dropdown แล้วเท่านั้น (populateFormSelectors สร้าง option ใหม่ไปแล้วด้านบน)
+    document.getElementById('borrow-community').value = record.Community || record[4] || '';
+
+    document.getElementById('borrow-modal-title').innerText = `แก้ไขรายการยืม (${record.EquipmentID || record[5] || ''})`;
+    setBorrowSubmitButtonMode(true);
+    renderBorrowPhotoPreviews();
+    document.getElementById('modal-borrow').classList.add('active');
+}
+
+function setBorrowSubmitButtonMode(isEditing) {
+    const btn = document.getElementById('borrow-submit-btn');
+    const label = document.getElementById('borrow-submit-label');
+    if (!btn || !label) return;
+    if (isEditing) {
+        label.innerText = 'อัปเดตข้อมูลรายการยืม';
+        btn.style.backgroundColor = '#d97706';
+        btn.classList.remove('btn-cta-teal');
+        btn.classList.add('btn-cta-amber');
+    } else {
+        label.innerText = 'บันทึกเอกสารสัญญา';
+        btn.style.backgroundColor = '#0d9488';
+        btn.classList.remove('btn-cta-amber');
+        btn.classList.add('btn-cta-teal');
+    }
 }
 
 // 📷 ระบบแนบรูปภาพหลักฐานการยืม (ถ่ายจากกล้องหรือเลือกจากคลังภาพ) สูงสุด 3 รูป
@@ -1188,7 +1271,7 @@ function handleBorrowPhotoSelect(event) {
     event.target.value = ''; // เคลียร์ค่า input เพื่อให้เลือกไฟล์เดิมซ้ำได้ในครั้งถัดไป
     if (!file) return;
 
-    if (borrowPhotos.length >= 3) {
+    if (existingBorrowImageIds.length + borrowPhotos.length >= 3) {
         Swal.fire('แนบรูปครบแล้ว', 'สามารถแนบรูปหลักฐานได้สูงสุด 3 รูปต่อรายการยืม', 'warning');
         return;
     }
@@ -1239,30 +1322,46 @@ function removeBorrowPhoto(index) {
     renderBorrowPhotoPreviews();
 }
 
+function removeExistingBorrowImage(index) {
+    existingBorrowImageIds.splice(index, 1);
+    renderBorrowPhotoPreviews();
+}
+
 function renderBorrowPhotoPreviews() {
     const wrap = document.getElementById('borrow-photo-previews');
     const trigger = document.getElementById('borrow-photo-trigger');
     const triggerLabel = document.getElementById('borrow-photo-trigger-label');
     if (!wrap) return;
 
-    if (borrowPhotos.length === 0) {
+    const existingHtml = existingBorrowImageIds.map((id, idx) => `
+        <div class="photo-preview-item">
+            <img src="${driveImageUrl(id)}" alt="รูปหลักฐานเดิม ${idx + 1}" />
+            <div class="photo-preview-remove" onclick="removeExistingBorrowImage(${idx})" title="เอารูปนี้ออก"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+    `).join('');
+    const newHtml = borrowPhotos.map((src, idx) => `
+        <div class="photo-preview-item">
+            <img src="${src}" alt="รูปหลักฐานใหม่ ${idx + 1}" />
+            <span class="absolute top-1 left-1 bg-teal-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">ใหม่</span>
+            <div class="photo-preview-remove" onclick="removeBorrowPhoto(${idx})" title="เอารูปนี้ออก"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+    `).join('');
+
+    const totalCount = existingBorrowImageIds.length + borrowPhotos.length;
+    if (totalCount === 0) {
         wrap.classList.add('hidden');
         wrap.innerHTML = '';
     } else {
         wrap.classList.remove('hidden');
-        wrap.innerHTML = borrowPhotos.map((src, idx) => `
-            <div class="photo-preview-item">
-                <img src="${src}" alt="รูปหลักฐาน ${idx + 1}" />
-                <div class="photo-preview-remove" onclick="removeBorrowPhoto(${idx})"><i class="fa-solid fa-xmark"></i></div>
-            </div>
-        `).join('');
+        wrap.innerHTML = existingHtml + newHtml;
     }
 
-    if (borrowPhotos.length >= 3) {
+    if (!trigger || !triggerLabel) return;
+    if (totalCount >= 3) {
         trigger.classList.add('hidden');
     } else {
         trigger.classList.remove('hidden');
-        triggerLabel.innerText = `ถ่ายรูปหลักฐาน (${borrowPhotos.length}/3)`;
+        triggerLabel.innerText = `ถ่ายรูปหลักฐาน (${totalCount}/3)`;
     }
 }
 
