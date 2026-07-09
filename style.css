@@ -24,9 +24,9 @@
 
 html[data-theme="dark"]{
   --app-bg:#0b1220;
-  --app-surface:#141c2e;
+  --app-surface:#1b2740;
   --app-surface-2:#101828;
-  --app-border:#243044;
+  --app-border:#2f3d58;
   --app-text-strong:#e2e8f0;
   --app-text:#b6c2d4;
   --app-text-soft:#7487a3;
@@ -47,6 +47,8 @@ body.font-sarabun{ font-family:'Sarabun', sans-serif; -webkit-tap-highlight-colo
 .text-xl{ font-size:21px !important; }
 .text-2xl{ font-size:25px !important; }
 .text-3xl{ font-size:31px !important; }
+
+::selection{ background:rgba(79,70,229,.25); color:inherit; }
 
 /* ---------- scrollbars ---------- */
 ::-webkit-scrollbar{ width:8px; height:8px; }
@@ -221,6 +223,10 @@ button:focus-visible, .menu-item:focus-visible{
   align-items:center; justify-content:center;
 }
 .modal-backdrop.active{ display:flex; }
+/* การ์ดของโมดัลทุกอันต้องมีขอบเขตที่มองเห็นชัดเจนเสมอ ไม่ว่าจะโหมดสว่างหรือมืด ป้องกันไม่ให้ดูเหมือน "ล้นขอบ"/ไม่มีขอบเขต */
+.modal-backdrop > div{
+  box-shadow:0 25px 60px -12px rgba(0,0,0,.45), 0 0 0 1px rgba(15,23,42,.06);
+}
 
 @keyframes scaleIn{
   from{ opacity:0; transform:scale(.95) translateY(6px); }
@@ -300,8 +306,12 @@ html[data-theme="dark"] table thead{ background:var(--app-surface-2) !important;
 html[data-theme="dark"] .table-report tbody tr:hover{ background-color:rgba(148,163,184,.06) !important; }
 html[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]){ border-color:var(--app-border) !important; }
 
-html[data-theme="dark"] .modal-backdrop{ background:rgba(0,0,0,.65); }
-html[data-theme="dark"] .modal-backdrop > div{ background:var(--app-surface); }
+html[data-theme="dark"] .modal-backdrop{ background:rgba(0,0,0,.7); }
+html[data-theme="dark"] .modal-backdrop > div{
+  background:var(--app-surface);
+  border:1px solid var(--app-border) !important;
+  box-shadow:0 25px 60px -12px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+}
 
 /* การ์ดสถิติ / KPI / กลุ่มพาสเทล ปรับความเข้มให้อ่านง่ายบนพื้นมืดแต่ยังคงเฉดสีเดิมไว้ */
 html[data-theme="dark"] [class*="bg-blue-50"]{ background-color:rgba(59,130,246,.14) !important; }
