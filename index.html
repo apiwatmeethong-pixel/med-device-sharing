@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="style.css?v=3.2" />
+    <link rel="stylesheet" href="style.css?v=3.3" />
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sarabun">
 
@@ -37,6 +37,10 @@
                     <i class="fa-solid fa-handshake text-lg text-teal-500 w-6 text-center"></i> 
                     <span class="menu-text transition-all duration-200">บันทึกการยืม-คืน</span>
                     <span id="menu-badge-borrow" class="menu-badge hidden">0</span>
+                </button>
+                <button onclick="openBorrowForm()" id="btn-menu-borrow-form" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i class="fa-solid fa-file-pen text-lg text-teal-600 w-6 text-center"></i> 
+                    <span class="menu-text transition-all duration-200">เพิ่ม/แก้ไขรายการยืม</span>
                 </button>
                 <button onclick="switchTab('equipments')" id="btn-menu-equipments" class="menu-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all">
                     <i class="fa-solid fa-wheelchair text-lg text-amber-500 w-6 text-center"></i> 
@@ -215,7 +219,7 @@
                         <i class="fa-solid fa-clipboard-list"></i> รายงานติดตามสถานะ
 </button>
 
-<button onclick="openBorrowModal()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.03] flex items-center gap-2">
+<button onclick="openBorrowForm()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.03] flex items-center gap-2">
     <i class="fa-solid fa-circle-plus text-purple-200"></i> บันทึกใบยืมใหม่
 </button>
                     </div>
@@ -413,7 +417,7 @@
         </main>
 
         <footer class="bg-white border-t border-gray-100 py-3 px-6 text-center text-[11px] text-gray-400 font-medium mt-auto print:hidden">
-            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v3.2 | Design & Developed by Apiwat Meethong</div>
+            <div>ระบบบริหารจัดการยืมคืนอุปกรณ์การแพทย์ v3.3 | Design & Developed by Apiwat Meethong</div>
         </footer>
     </div>
 
@@ -572,14 +576,14 @@
         </div>
     </div>
 
-    <div id="modal-borrow" class="modal-backdrop">
-        <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-scale text-xs">
-            <div class="flex justify-between items-center mb-4">
+    <section id="sec-borrow-form" class="app-view space-y-6 hidden">
+        <div style="background-color:#ffffff; border:1px solid #f1f5f9; border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,.06); padding:24px;" class="text-xs">
+            <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid #f1f5f9;">
                 <div class="flex items-center gap-2">
                     <div class="p-2 bg-teal-50 rounded-xl text-teal-600"><i class="fa-solid fa-file-signature"></i></div>
                     <h4 id="borrow-modal-title" class="font-bold text-gray-800 text-sm">บันทึกเอกสารสัญญายืมพัสดุชิ้นใหม่</h4>
                 </div>
-                <button onclick="closeBorrowModal()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl"><i class="fa-solid fa-xmark text-sm"></i></button>
+                <button onclick="cancelBorrowForm()" class="text-gray-400 hover:bg-gray-50 p-2 rounded-xl" title="กลับไปหน้ารายการ"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             <form id="form-borrow" onsubmit="submitBorrowForm(event)" class="space-y-3.5">
                 <input type="hidden" id="borrow-entry-id" />
@@ -664,15 +668,15 @@
                         เจ้าหน้าที่ผู้ทำรายการยืนยันว่า ได้ปฏิบัติตาม พรบ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ในการได้รับความยินยอมทางวาจา/เอกสาร จากผู้ป่วยหรือญาติเรียบร้อยแล้ว
                     </label>
                 </div>
-                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                    <button type="button" onclick="closeBorrowModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
+                <div class="flex justify-end gap-2 pt-2" style="border-top:1px solid #f1f5f9;">
+                    <button type="button" onclick="cancelBorrowForm()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-medium transition">ยกเลิก</button>
                     <button type="submit" id="borrow-submit-btn" class="btn-cta-teal rounded-xl font-bold transition-all" style="background-color:#0d9488; color:#ffffff; padding:10px 24px; display:inline-flex; align-items:center; gap:8px; border:none;">
                         <i class="fa-solid fa-floppy-disk" style="color:#ffffff;"></i> <span id="borrow-submit-label" style="color:#ffffff;">บันทึกเอกสารสัญญา</span>
                     </button>
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
     <div id="modal-equipment" class="modal-backdrop">
         <div class="bg-white rounded-2xl p-5 shadow-xl border border-gray-100 w-full max-w-sm mx-4 animate-scale text-xs">
@@ -738,6 +742,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=3.2"></script>
+    <script src="script.js?v=3.3"></script>
 </body>
 </html>

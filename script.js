@@ -1070,7 +1070,7 @@ async function submitBorrowForm(event) {
         const res = await run(isEditing ? 'updateBorrow' : 'addBorrow', payload);
         if (res.success) {
             Swal.fire('บันทึกสำเร็จ', isEditing ? 'อัปเดตข้อมูลรายการยืมเรียบร้อยแล้ว' : 'ระบบลงทะเบียนอนุมัติพิมพ์สัญญาเรียบร้อย', 'success');
-            closeBorrowModal();
+            cancelBorrowForm();
             await loadSystemData();
         } else {
             Swal.fire('ไม่สำเร็จ', res.error || 'เกิดข้อผิดพลาดในการบันทึกเอกสาร กรุณาลองใหม่อีกครั้ง', 'error');
@@ -1188,7 +1188,7 @@ async function submitLogin(event) {
 function logout() { localStorage.clear(); window.location.reload(); }
 function openLoginModal() { document.getElementById('modal-login').classList.add('active'); }
 function closeLoginModal() { document.getElementById('modal-login').classList.remove('active'); }
-function openBorrowModal() {
+function openBorrowForm() {
     editingBorrowId = null;
     existingBorrowImageIds = [];
     borrowPhotos = [];
@@ -1198,14 +1198,14 @@ function openBorrowModal() {
     setBorrowSubmitButtonMode(false);
     populateFormSelectors();
     renderBorrowPhotoPreviews();
-    document.getElementById('modal-borrow').classList.add('active');
+    switchTab('borrow-form');
 }
-function closeBorrowModal() {
-    document.getElementById('modal-borrow').classList.remove('active');
+function cancelBorrowForm() {
     editingBorrowId = null;
     existingBorrowImageIds = [];
     borrowPhotos = [];
     renderBorrowPhotoPreviews();
+    switchTab('borrow');
 }
 
 // ✏️ เปิดฟอร์มเดิมขึ้นมาแก้ไข พร้อมดึงข้อมูล/รูปภาพเดิมมาแสดงไว้ล่วงหน้า สำหรับกรณีบันทึกผิดแล้วต้องการแก้ไข
@@ -1245,7 +1245,7 @@ function editBorrowRecord(entryId) {
     document.getElementById('borrow-modal-title').innerText = `แก้ไขรายการยืม (${record.EquipmentID || record[5] || ''})`;
     setBorrowSubmitButtonMode(true);
     renderBorrowPhotoPreviews();
-    document.getElementById('modal-borrow').classList.add('active');
+    switchTab('borrow-form');
 }
 
 function setBorrowSubmitButtonMode(isEditing) {
